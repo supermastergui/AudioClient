@@ -28,4 +28,5 @@ distribution = false
 [dependency-groups]
 dev = [
     "nuitka>=2.8.1",
+    "mypy>=1.19.1",
 ]

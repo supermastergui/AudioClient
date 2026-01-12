@@ -7,6 +7,7 @@ from opuslib import APPLICATION_VOIP, Encoder
 from src.constants import opus_default_bitrate, default_channels, default_frame_size, default_sample_rate
 
 
+# Opus编码器
 class OpusEncoder:
     def __init__(self,
                  sample_rate: int = default_sample_rate,

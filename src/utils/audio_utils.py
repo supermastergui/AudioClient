@@ -21,6 +21,8 @@ def get_device_info(host_api: int) -> tuple[dict[str, int], dict[str, int]]:
         if dev_info['hostApi'] == host_api:
             try:
                 dev_info["name"] = dev_info["name"].encode("GBK").decode("utf8")
+            except UnicodeEncodeError:
+                pass
             except UnicodeDecodeError:
                 pass
             device_infos.append(dev_info)

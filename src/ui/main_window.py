@@ -86,6 +86,12 @@ class MainWindow(QMainWindow, Ui_MainWindow):
 
         client_info = ClientInfo()
         signals = AudioClientSignals()
+
+        def log_message(source: str, level: str, content: str):
+            logger.log(level, f"{source} > {content}")
+
+        signals.log_message.connect(log_message)
+
         self.voice_client = VoiceClient(client_info, signals)
 
         self.login = LoginWindow(self.voice_client, self.signals)

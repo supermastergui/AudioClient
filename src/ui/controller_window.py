@@ -6,8 +6,9 @@ from src.core import VoiceClient
 from src.model import ConnectionState
 from src.utils import clear_error
 from .form import Ui_ControllerWindow
+from ..core.transmitter import Transmitter
 
-frequency_pattern = compile(r"\d{1,3}\.\d{3}")
+frequency_pattern = compile(r"\d{1,3}\.\d{1,3}")
 
 
 class ControllerWindow(QWidget, Ui_ControllerWindow):
@@ -30,20 +31,26 @@ class ControllerWindow(QWidget, Ui_ControllerWindow):
         self._frequency = -1
         self.line_edit_freq.textChanged.connect(self.decode_frequency)
 
-        self.transmitters = []
+        self.transmitters = [
+            Transmitter(0, True, 0),
+            Transmitter(122800, True, 1),
+            Transmitter(121500, True, 2),
+            Transmitter(1, True, 3),
+        ]
 
     def decode_frequency(self, text: str):
         if frequency_pattern.match(text) is not None:
-            self._frequency = int(float(text) * 1000)
             self.button_freq_rx.setEnabled(True)
             self.button_freq_tx.setEnabled(True)
+            self._frequency = int(float(text) * 1000)
+            self.transmitters[3].frequency = self._frequency
         else:
             self._frequency = -1
             self.button_freq_rx.active = False
             self.button_freq_tx.active = False
             self.button_freq_rx.setEnabled(False)
             self.button_freq_tx.setEnabled(False)
-            self.voice_client.set_transmitter_receive_flag(self._frequency, False)
+            self.voice_client.switch_frequency(1, 122800, False)
 
     def freq_tx_click(self):
         clear_error(self.line_edit_freq)
@@ -51,63 +58,55 @@ class ControllerWindow(QWidget, Ui_ControllerWindow):
         self.button_main_freq_tx.active = False
         self.button_unicom_freq_tx.active = False
         if self.button_freq_tx.active:
-            self.voice_client.switch_frequency(self._frequency, 3)
-        else:
-            self.voice_client.clear_frequency()
+            self.voice_client.switch_frequency(3, self._frequency, self.button_freq_rx.active)
 
     def freq_rx_click(self):
-        self.voice_client.set_transmitter_receive_flag(self._frequency,
-                                                       self.button_freq_rx.active)
+        self.transmitters[3].receive_flag = self.button_freq_rx.active
 
     def main_freq_tx_click(self):
         self.button_freq_tx.active = False
         self.button_emer_freq_tx.active = False
         self.button_unicom_freq_tx.active = False
         if self.button_main_freq_tx.active:
-            self.voice_client.switch_frequency(self.voice_client.main_frequency, 0)
-        else:
-            self.voice_client.clear_frequency()
+            self.voice_client.switch_frequency(0, self.voice_client.client_info.main_frequency,
+                                               self.button_main_freq_rx.active)
 
     def main_freq_rx_click(self):
-        self.voice_client.set_transmitter_receive_flag(self.voice_client.main_frequency,
-                                                       self.button_main_freq_rx.active)
+        self.transmitters[0].receive_flag = self.button_main_freq_rx.active
 
     def unicom_freq_tx_click(self):
         self.button_freq_tx.active = False
         self.button_emer_freq_tx.active = False
         self.button_main_freq_tx.active = False
         if self.button_unicom_freq_tx.active:
-            self.voice_client.switch_frequency(122800, 1)
-        else:
-            self.voice_client.clear_frequency()
+            self.voice_client.switch_frequency(1, 122800, self.button_unicom_freq_rx.active)
 
     def unicom_freq_rx_click(self):
-        self.voice_client.set_transmitter_receive_flag(122800, self.button_unicom_freq_rx.active)
+        self.transmitters[1].receive_flag = self.button_unicom_freq_rx.active
 
     def emer_freq_tx_click(self):
         self.button_freq_tx.active = False
         self.button_main_freq_tx.active = False
         self.button_unicom_freq_tx.active = False
         if self.button_emer_freq_tx.active:
-            self.voice_client.switch_frequency(121500, 2)
-        else:
-            self.voice_client.clear_frequency()
+            self.voice_client.switch_frequency(2, 121500, self.button_emer_freq_rx.active)
 
     def emer_freq_rx_click(self):
-        self.voice_client.set_transmitter_receive_flag(121500, self.button_emer_freq_rx.active)
+        self.transmitters[2].receive_flag = self.button_emer_freq_rx.active
 
     def connect_state_changed(self, state: ConnectionState):
-        if not self.voice_client.is_atc:
+        if not self.voice_client.client_info.is_atc:
             return
         if state == ConnectionState.READY:
-            self.label_main_freq_v.setText(f"{self.voice_client.main_frequency / 1000:.3f}")
+            self.transmitters[0].frequency = self.voice_client.client_info.main_frequency
+            self.voice_client.add_transmitter(self.transmitters[0], False, True)
+            self.voice_client.add_transmitter(self.transmitters[1], False, True)
+            self.voice_client.add_transmitter(self.transmitters[2], False, True)
+            self.voice_client.add_transmitter(self.transmitters[3], False, False)
+            self.label_main_freq_v.setText(f"{self.voice_client.client_info.main_frequency / 1000:.3f}")
             self.button_main_freq_rx.active = True
             self.button_unicom_freq_rx.active = True
             self.button_emer_freq_rx.active = True
             self.button_freq_rx.active = False
             self.button_freq_rx.setEnabled(False)
             self.button_freq_tx.setEnabled(False)
-            self.voice_client.set_transmitter_receive_flag(self.voice_client.main_frequency,
-                                                           self.button_main_freq_rx.active)
-            self.voice_client.set_transmitter_receive_flag(122800, self.button_unicom_freq_rx.active)
-            self.voice_client.set_transmitter_receive_flag(121500, self.button_emer_freq_rx.active)

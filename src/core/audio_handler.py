@@ -12,12 +12,16 @@ from .codecs.opus_decoder import OpusDecoder
 from .codecs.opus_encoder import OpusEncoder
 
 
+# 音频处理器
+# 捕获音频，使用Opus编码并输出
+# 获取音频流，使用Opus解码并播放
 class AudioHandler:
     def __init__(self, audio_signal: AudioClientSignals):
         self._input_sample_rate = default_sample_rate
         self._output_sample_rate = default_sample_rate
 
-        self._channels = default_channels
+        self._input_channels = default_channels
+        self._output_channels = default_channels
         self._frame_size = default_frame_size
 
         self._input_frame_size = int(default_frame_size * self._input_sample_rate / opus_default_sample_rate)
@@ -54,6 +58,7 @@ class AudioHandler:
         else:
             self._input_device = index
         info = self._audio.get_device_info_by_index(index)
+        self._input_channels = max(int(info["maxInputChannels"]) // 2, default_channels)
         self._input_sample_rate = int(info["defaultSampleRate"])
         self._input_frame_size = int(default_frame_size * self._input_sample_rate / opus_default_sample_rate)
         if self._is_recording:
@@ -66,6 +71,7 @@ class AudioHandler:
         else:
             self._output_device = index
         info = self._audio.get_device_info_by_index(index)
+        self._output_channels = max(int(info["maxOutputChannels"]) // 2, default_channels)
         self._output_sample_rate = int(info["defaultSampleRate"])
         self._output_frame_size = int(default_frame_size * self._output_sample_rate / opus_default_sample_rate)
         if self._is_playing:
@@ -78,7 +84,7 @@ class AudioHandler:
         try:
             self._input_stream = self._audio.open(
                 format=paInt16,
-                channels=self._channels,
+                channels=self._input_channels,
                 rate=self._input_sample_rate,
                 input=True,
                 input_device_index=self._input_device,
@@ -105,7 +111,7 @@ class AudioHandler:
         try:
             self._output_stream = self._audio.open(
                 format=paFloat32,
-                channels=self._channels,
+                channels=self._output_channels,
                 rate=self._output_sample_rate,
                 output=True,
                 output_device_index=self._output_device,
@@ -129,6 +135,9 @@ class AudioHandler:
     def _input_callback(self, in_data, _, __, ___):
         if self._ptt_active and self.on_encoded_audio:
             audio_data = frombuffer(in_data, dtype=int16)
+            # 重采样麦克风输入的音频
+            # 麦克风输入的采样率通常为44100Hz
+            # OPUS编码的音频采样率通常为48000Hz
             resampled_audio = resample(audio_data, self._input_sample_rate, opus_default_sample_rate)
             if len(resampled_audio) == 0:
                 logger.warning("empty data")
@@ -143,6 +152,9 @@ class AudioHandler:
             encoded_data = self._output_queue.get_nowait()
             audio_data = self._decoder.decode(encoded_data)
             if audio_data is not None:
+                # 重采样解码出来的音频数据
+                # OPUS编码的音频采样率通常为48000Hz
+                # 音频输出的采样率通常为44100Hz
                 resampled_audio = resample(audio_data, opus_default_sample_rate, self._output_sample_rate)
                 if resampled_audio.size != frame_count:
                     logger.warning(f"Resampling audio with {frame_count} frames")

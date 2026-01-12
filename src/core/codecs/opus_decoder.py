@@ -7,6 +7,7 @@ from opuslib import Decoder
 from src.constants import default_channels, default_frame_size, opus_default_sample_rate
 
 
+# Opus解码器
 class OpusDecoder:
     def __init__(self,
                  sample_rate: int = opus_default_sample_rate,

@@ -63,11 +63,13 @@ class LoginWindow(QWidget, Ui_LoginWindow):
 
         data = response.json()["data"]
 
-        self.voice_client.cid = data["user"]["cid"]
-        self.voice_client.jwt_token = data["token"]
+        self.voice_client.client_info.cid = data["user"]["cid"]
+        self.voice_client.client_info.jwt_token = data["token"]
 
         logger.success(f"Logged in successfully")
-        logger.trace(f"Logged in as {account}, cid={self.voice_client.cid}, token={self.voice_client.jwt_token}")
+        logger.trace(f"Logged in as {account}, "
+                     f"cid={self.voice_client.client_info.cid}, "
+                     f"token={self.voice_client.client_info.jwt_token}")
 
         self.remember_me_change(self.check_box_remember_me.isChecked())
         self.signals.login_success.emit()

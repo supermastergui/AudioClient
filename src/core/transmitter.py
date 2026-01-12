@@ -4,6 +4,7 @@ FrequencyChangeCallback = Callable[[int, int, bool], None]
 ReceiveFlagCallback = Callable[[int, int, bool], None]
 
 
+# 无线电台
 class Transmitter:
     def __init__(self, frequency: int = 0, receive_flag: bool = False, transmitter_id: Optional[int] = None,
                  frequency_change_callback: Optional[FrequencyChangeCallback] = None,

@@ -13,6 +13,7 @@ from .transmitter import Transmitter
 from ..constants import default_frame_time, default_frame_time_s
 
 
+# 语音客户端
 class VoiceClient(QObject):
     def __init__(self, client_info: ClientInfo, signals: AudioClientSignals):
         super().__init__()
@@ -78,9 +79,6 @@ class VoiceClient(QObject):
         self._network.connect_to_server(host, tcp_port, udp_port, self.client_info.jwt_token)
 
     def disconnect_from_server(self):
-        self._network.send_control_message(ControlMessage(MessageType.DISCONNECT,
-                                                          self.client_info.cid,
-                                                          self.client_info.callsign))
         self._network.disconnect_from_server()
         self._current_transmitter = -1
         self._audio.cleanup()
@@ -92,13 +90,11 @@ class VoiceClient(QObject):
             transmitter.id = len(self.transmitters.keys())
         transmitter.frequency_change_callback = self.switch_frequency
         transmitter.receive_flag_change_callback = self.switch_receive_flag
-        if tx and rx:
-            self.switch_frequency(transmitter.id, transmitter.frequency, rx)
-        elif not tx and rx:
-            self.switch_receive_flag(transmitter.id, transmitter.frequency, rx)
-        elif tx:
-            self.switch_frequency(transmitter.id, transmitter.frequency, rx)
         self.transmitters[transmitter.id] = transmitter
+        self.switch_frequency(transmitter.id, transmitter.frequency, rx)
+        self._send_voice_data(b"")
+        if not tx:
+            self._current_transmitter = -1
 
     def remove_transmitter(self, transmitter_id: int):
         del self.transmitters[transmitter_id]
@@ -133,7 +129,7 @@ class VoiceClient(QObject):
             transmitter=transmitter_id,
             data=f"{frequency}:{'1' if rx else '0'}"
         )
-        self._log_message("INFO", f"Switch to {frequency / 1000:.3f}mHz receive flag {rx}")
+        self._log_message("INFO", f"Switch transmitter {transmitter_id} to {frequency / 1000:.3f}mHz receive flag {rx}")
         self._network.send_control_message(message)
 
     def send_text_message(self, target: str, message: str):
@@ -166,8 +162,6 @@ class VoiceClient(QObject):
         self._network.send_voice_packet(packet)
 
     def _handle_control_message(self, message: ControlMessage):
-        self.signals.control_message_received.emit(message)
-
         if message.type == MessageType.ERROR:
             logger.error(f"Server error: {message.data}")
             self.signals.error_occurred.emit(message.data)
@@ -177,16 +171,16 @@ class VoiceClient(QObject):
             if message.data.startswith("SERVER:"):
                 if "Welcome" in message.data:
                     data = message.data.split(":")
-                    self._callsign = data[1]
+                    self.client_info.callsign = data[1]
+                    self._log_message("INFO", f"Starting heartbeat timer")
                     self._heartbeat_timer.start()
                     self._audio.start_recording()
                     self._audio.start_playback()
                     if len(data) == 4:
-                        self._main_frequency = int(data[-1])
-                        self._is_atc = True
+                        self.client_info.main_frequency = int(data[-1])
+                        self.client_info.is_atc = True
                     self._set_connection_state(ConnectionState.READY)
                     self._log_message("INFO", "Identity verification passed")
-                    self._send_voice_data(b"")
         elif message.type == MessageType.DISCONNECT:
             self._heartbeat_timer.stop()
             self._audio.stop_recording()
@@ -196,7 +190,6 @@ class VoiceClient(QObject):
 
     def _handle_voice_packet(self, packet: VoicePacket):
         self.receiving[packet.callsign] = time()
-        self.signals.voice_data_received.emit(packet)
         self._audio.play_encoded_audio(packet.data)
 
     def _handle_connection_status(self, connected: bool):

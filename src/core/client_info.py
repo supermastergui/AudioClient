@@ -1,3 +1,4 @@
+# 客户端信息
 class ClientInfo:
     def __init__(self):
         self.cid = 0

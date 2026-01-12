@@ -21,6 +21,7 @@ class ReturnValue:
     status: int
 
 
+# FSUIPC客户端封装
 class FSUIPCClient:
     def __init__(self, fsuipc_lib_path: str) -> None:
         fsuipc_lib = cdll.LoadLibrary(fsuipc_lib_path)

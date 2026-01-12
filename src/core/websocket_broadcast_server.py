@@ -8,6 +8,7 @@ from websockets import ConnectionClosed, Headers, Request, Response, ServerConne
 from src.model import WebSocketMessage
 
 
+# ADF插件
 class WebSocketBroadcastServer:
     def __init__(self, host='0.0.0.0', port=49080):
         self.server = None

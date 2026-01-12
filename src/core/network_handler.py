@@ -11,10 +11,12 @@ from src.model.voice_models import ControlMessage, MessageType, VoicePacket
 from src.signal import AudioClientSignals
 
 
+# 网络处理器
 class NetworkHandler(QObject):
     def __init__(self, signals: AudioClientSignals):
         super().__init__()
 
+        # 双协议, TCP用于传输信令, UDP用于传输音频数据
         self._tcp_socket: Optional[socket] = None
         self._udp_socket: Optional[socket] = None
         self._server_address: Optional[tuple] = None
@@ -28,18 +30,20 @@ class NetworkHandler(QObject):
     def _log_message(self, level: str, message: str):
         self._signals.log_message.emit("Network", level, message)
 
+    # 连接到服务器
     def connect_to_server(self, host: str, tcp_port: int, udp_port: int, jwt_token: str):
         try:
             self._server_address = (host, udp_port)
 
+            # 首先连接TCP信道
             self._log_message("INFO", f"Connect to tcp://{host}:{tcp_port}")
             self._tcp_socket = socket(AF_INET, SOCK_STREAM)
             self._tcp_socket.connect((host, tcp_port))
-
             self._tcp_running = True
             tcp_thread = Thread(target=self._tcp_receive_loop, daemon=True)
             tcp_thread.start()
 
+            # 然后连接UDP信道
             self._log_message("INFO", f"Connect to udp://{host}:{udp_port}")
             self._udp_socket = socket(AF_INET, SOCK_DGRAM)
             self._udp_socket.connect((host, udp_port))
@@ -47,8 +51,8 @@ class NetworkHandler(QObject):
             udp_thread = Thread(target=self._udp_receive_loop, daemon=True)
             udp_thread.start()
 
+            # 发送令牌验证
             self._tcp_socket.send(f"{jwt_token}\n".encode())
-
             self._connected = True
             self._signals.socket_connection_state.emit(True)
             logger.info("Connected to voice server")
@@ -58,12 +62,16 @@ class NetworkHandler(QObject):
             self._signals.error_occurred.emit(f"连接失败: {e}")
             self.cleanup()
 
+    # 断开连接
     def disconnect_from_server(self):
+        # 发送断开连接消息
+        self.send_control_message(ControlMessage(MessageType.DISCONNECT))
         self.cleanup()
         self._signals.socket_connection_state.emit(False)
         self._log_message("INFO", f"Disconnected from voice server")
         logger.info("Disconnected from voice server")
 
+    # 发送信令消息
     def send_control_message(self, message: ControlMessage):
         if not self._tcp_socket:
             return
@@ -74,6 +82,7 @@ class NetworkHandler(QObject):
             logger.error(f"Failed to send control message: {e}")
             self._signals.error_occurred.emit(f"发送消息失败: {e}")
 
+    # 发送音频数据
     def send_voice_packet(self, packet: bytes):
         if not self._udp_socket or not self._server_address:
             return
@@ -83,6 +92,7 @@ class NetworkHandler(QObject):
         except Exception as e:
             logger.error(f"Failed to send voice packet: {e}")
 
+    # 接收信令
     def _tcp_receive_loop(self):
         while self._tcp_running and self._tcp_socket:
             try:
@@ -97,6 +107,7 @@ class NetworkHandler(QObject):
                 break
         self.disconnect_from_server()
 
+    # 接收音频数据
     def _udp_receive_loop(self):
         while self._udp_running and self._udp_socket:
             try:
@@ -107,6 +118,7 @@ class NetworkHandler(QObject):
                     logger.error(f"UDP receive error: {e}")
                 break
 
+    # 处理信令
     def _process_control_message(self, data: str):
         try:
             message_dict = loads(data)
@@ -121,6 +133,7 @@ class NetworkHandler(QObject):
         except Exception as e:
             logger.error(f"Failed to process control message: {e}")
 
+    # 处理音频数据
     def _process_voice_packet(self, data: bytes):
         try:
             if len(data) < 10 or data[-1] != 0x0A:
