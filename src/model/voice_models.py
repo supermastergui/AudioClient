@@ -1,3 +1,6 @@
+#  Copyright (c) 2025-2026 Half_nothing
+#  SPDX-License-Identifier: MIT
+
 from dataclasses import dataclass
 from enum import Enum
 from struct import pack
@@ -55,14 +58,14 @@ class VoicePacketBuilder:
         callsign_bytes = callsign.encode('utf-8')
         callsign_len = len(callsign_bytes)
 
-        if callsign_len > 255:
+        if callsign_len >= 255:
             raise ValueError("Callsign too long")
 
         if frequency >= 200000:
             raise ValueError("Frequency too large")
 
-        if frequency > 100000:
-            frequency -= 100000
+        if transmitter >= 255:
+            raise ValueError("Transmitter ID too large")
 
         packet = bytearray()
         packet.extend(pack('<i', cid))

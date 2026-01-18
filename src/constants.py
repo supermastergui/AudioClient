@@ -1,13 +1,16 @@
-from os.path import expandvars, join
+#  Copyright (c) 2025-2026 Half_nothing
+#  SPDX-License-Identifier: MIT
+
+from os import getcwd
+from pathlib import Path
 
 from .utils.version import Version
 
 config_version: Version = Version([1, 0, 0])
-config_path: str = "config"
+config_file_path: Path = Path(getcwd()) / "config.yaml"
 app_version: Version = Version([0, 1, 0])
 app_name: str = "AudioClient"
 app_title: str = f"{app_name} v{app_version.version}"
-appdata_path: str = join(expandvars("%APPDATA%"), app_name)
 
 organization_name: str = "APOC Dev team"
 organization_website: str = "https://www.apocfly.com"
@@ -15,7 +18,7 @@ organization_website: str = "https://www.apocfly.com"
 # opus采样率，必须是12000的倍数
 opus_default_sample_rate: int = 48000
 # opus比特率
-opus_default_bitrate: int = int(opus_default_sample_rate / 2)
+opus_default_bitrate: int = opus_default_sample_rate // 2
 # 音频采样率
 default_sample_rate: int = 44100
 # 音频通道数

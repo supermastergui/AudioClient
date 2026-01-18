@@ -1,3 +1,6 @@
+#  Copyright (c) 2025-2026 Half_nothing
+#  SPDX-License-Identifier: MIT
+
 from asyncio import get_running_loop, new_event_loop, set_event_loop
 from threading import Thread
 from typing import Optional
@@ -15,16 +18,14 @@ from .login_window import LoginWindow
 from src.constants import app_title
 from src.utils import http
 from src.model import ConnectionState
-from src.config import config
+from src.config import config, config_manager
 from src.thread import KeyboardListenerThread, MouseListenerThread
-from src.core import VoiceClient
-from src.signal import AudioClientSignals, Signals, MouseSignals, KeyBoardSignals
-from ..core.client_info import ClientInfo
-from ..core.websocket_broadcast_server import WebSocketBroadcastServer
+from src.core import VoiceClient, ClientInfo, WebSocketBroadcastServer
+from src.signal import AudioClientSignals, MouseSignals, KeyBoardSignals
 
 
 class MainWindow(QMainWindow, Ui_MainWindow):
-    def __init__(self, signals: Signals, mouse_signals: MouseSignals, keyboard_signals: KeyBoardSignals) -> None:
+    def __init__(self, signals: AudioClientSignals, mouse_signals: MouseSignals, keyboard_signals: KeyBoardSignals) -> None:
         super().__init__()
         logger.trace("Creating main window")
 
@@ -37,7 +38,7 @@ class MainWindow(QMainWindow, Ui_MainWindow):
         self.voice_client: Optional[VoiceClient] = None
         self.keyboard_listener: Optional[KeyboardListenerThread] = None
         self.mouse_listener: Optional[MouseListenerThread] = None
-        self.connect: Optional[ConnectWindow] = None
+        self.connect_window: Optional[ConnectWindow] = None
         self.login: Optional[LoginWindow] = None
         self.config: Optional[ConfigWindow] = None
         self.ptt_button: Optional[PTTButton] = None
@@ -55,7 +56,7 @@ class MainWindow(QMainWindow, Ui_MainWindow):
         self.mouse_signals = mouse_signals
         self.keyboard_signals = keyboard_signals
 
-        config.add_config_save_callback(self.config_update)
+        config_manager.register_save_callback(self.config_update)
 
         http.initialize()
         http.client_initialized.connect(self.initialize_complete)
@@ -73,40 +74,44 @@ class MainWindow(QMainWindow, Ui_MainWindow):
         loop.run_until_complete(self.websocket.start())
 
     def logout_request(self) -> None:
+        if self.voice_client is not None:
+            self.voice_client.client_info.reset()
         self.windows.setCurrentIndex(1)
 
     def login_success(self) -> None:
         self.windows.setCurrentIndex(2)
 
-    def config_update(self) -> None:
-        self.ptt_button.set_target_key(config.ptt_key)
+    def config_update(self) -> bool:
+        if self.ptt_button is None:
+            return False
+        self.ptt_button.set_target_key(config.audio.ptt_key)
+        return True
 
     def initialize_complete(self) -> None:
         self.setMinimumSize(0, 0)
 
         client_info = ClientInfo()
-        signals = AudioClientSignals()
 
         def log_message(source: str, level: str, content: str):
             logger.log(level, f"{source} > {content}")
 
-        signals.log_message.connect(log_message)
+        self.signals.log_message.connect(log_message)
 
-        self.voice_client = VoiceClient(client_info, signals)
+        self.voice_client = VoiceClient(client_info, self.signals)
 
         self.login = LoginWindow(self.voice_client, self.signals)
         self.login.setObjectName(u"login")
         self.windows.addWidget(self.login)
 
-        self.connect = ConnectWindow(self.voice_client, self.signals)
-        self.connect.setObjectName(u"connect")
-        self.windows.addWidget(self.connect)
+        self.connect_window = ConnectWindow(self.voice_client, self.signals)
+        self.connect_window.setObjectName(u"connect")
+        self.windows.addWidget(self.connect_window)
 
-        self.config = ConfigWindow(signals)
+        self.config = ConfigWindow(self.signals)
         self.config.setObjectName(u"config")
 
         self.signals.login_success.connect(self.login_success)
-        self.signals.login_success.connect(self.connect.login_success)
+        self.signals.login_success.connect(self.connect_window.login_success)
 
         self.mouse_listener = MouseListenerThread(self.mouse_signals)
         self.keyboard_listener = KeyboardListenerThread(self.keyboard_signals)
@@ -123,8 +128,8 @@ class MainWindow(QMainWindow, Ui_MainWindow):
         self.keyboard_signals.key_pressed.connect(self.ptt_button.key_pressed)
         self.mouse_signals.mouse_released.connect(self.ptt_button.key_released)
         self.keyboard_signals.key_released.connect(self.ptt_button.key_released)
-        self.ptt_button.ptt_pressed.connect(lambda x: signals.ptt_status_change.emit(x))
-        signals.connection_state_changed.connect(self.handle_connect_status_change)
+        self.ptt_button.ptt_pressed.connect(lambda x: self.signals.ptt_status_change.emit(x))
+        self.signals.connection_state_changed.connect(self.handle_connect_status_change)
 
         self.menubar.setVisible(True)
         self.resize(450, 450)
@@ -152,6 +157,8 @@ class MainWindow(QMainWindow, Ui_MainWindow):
                 self.setWindowTitle(f"{app_title} - 已就绪")
 
     def show_config_window(self) -> None:
+        if self.config is None:
+            return
         self.config.update_config_data()
         self.config.show()
 

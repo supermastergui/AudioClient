@@ -1,0 +1,21 @@
+account:
+  password: '123456'
+  remember_me: true
+  username: '2352'
+audio:
+  api_driver: "\u81EA\u52A8"
+  input_device: "\u9ED8\u8BA4"
+  output_device: "\u9ED8\u8BA4"
+  ptt_key: Key.ctrl_l
+log:
+  compression: zip
+  level: trace
+  path: logs/{time}.log
+  retention: 7 days
+  rotation: 1 day
+server:
+  api_endpoint: http://127.0.0.1:6810
+  voice_endpoint: 127.0.0.1
+  voice_tcp_port: 6808
+  voice_udp_port: 6807
+version: 1.0.0

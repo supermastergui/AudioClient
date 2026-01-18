@@ -1,3 +1,6 @@
+#  Copyright (c) 2025-2026 Half_nothing
+#  SPDX-License-Identifier: MIT
+
 controller_list = ["DEL", "GND", "A_GND", "RMP", "TWR", "APP", "CTR", "FSS"]
 
 

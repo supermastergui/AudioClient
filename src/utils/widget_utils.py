@@ -1,3 +1,6 @@
+#  Copyright (c) 2025-2026 Half_nothing
+#  SPDX-License-Identifier: MIT
+
 from typing import Optional, Type, TypeVar, cast, overload
 
 from PySide6.QtWidgets import QLineEdit, QWidget

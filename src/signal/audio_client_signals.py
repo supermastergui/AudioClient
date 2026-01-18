@@ -1,9 +1,30 @@
+#  Copyright (c) 2025-2026 Half_nothing
+#  SPDX-License-Identifier: MIT
+
 from PySide6.QtCore import QObject, Signal
 
-from src.model import ConnectionState, ControlMessage, VoicePacket
+from src.model import ConnectionState, ControlMessage, VoicePacket, WebSocketMessage
 
 
 class AudioClientSignals(QObject):
+    # emit when need to show config windows
+    show_config_windows = Signal()
+    # emit when login success
+    login_success = Signal()
+    # emit when request logout
+    logout_request = Signal()
+    # emit when broadcast message
+    broadcast_message = Signal(WebSocketMessage)
+    # emit to log message
+    # arguments: from | level | content
+    log_message = Signal(str, str, str)
+    # emit when need show log message to user
+    # arguments: from | level | content
+    show_log_message = Signal(str, str, str)
+    # emit when resize window
+    # arguments: width | height | move to center
+    resize_window = Signal(int, int, bool)
+
     # emit when connection changed
     connection_state_changed = Signal(ConnectionState)
     # emit when receive control message
@@ -16,10 +37,6 @@ class AudioClientSignals(QObject):
     error_occurred = Signal(str)
     # emit when frequency change
     update_current_frequency = Signal(int)
-
-    # emit to log message
-    # arguments: from | level | content
-    log_message = Signal(str, str, str)
 
     # signals below are for internal use
     # emit when tcp and udp socket connect or disconnect

@@ -126,6 +126,8 @@ class Ui_ClientWindow(object):
         self.group_controllers.setFont(font)
         self.verticalLayout = QVBoxLayout(self.group_controllers)
         self.verticalLayout.setObjectName(u"verticalLayout")
+        self.verticalLayout_2 = QVBoxLayout()
+        self.verticalLayout_2.setObjectName(u"verticalLayout_2")
         self.layout_unicom = QHBoxLayout()
         self.layout_unicom.setObjectName(u"layout_unicom")
         self.label_unicom = QLabel(self.group_controllers)
@@ -159,7 +161,7 @@ class Ui_ClientWindow(object):
         self.layout_unicom.addWidget(self.button_unicom_com2)
 
 
-        self.verticalLayout.addLayout(self.layout_unicom)
+        self.verticalLayout_2.addLayout(self.layout_unicom)
 
         self.layout_emer = QHBoxLayout()
         self.layout_emer.setObjectName(u"layout_emer")
@@ -194,7 +196,10 @@ class Ui_ClientWindow(object):
         self.layout_emer.addWidget(self.button_emer_com2)
 
 
-        self.verticalLayout.addLayout(self.layout_emer)
+        self.verticalLayout_2.addLayout(self.layout_emer)
+
+
+        self.verticalLayout.addLayout(self.verticalLayout_2)
 
         self.spacer_2 = QSpacerItem(20, 40, QSizePolicy.Policy.Minimum, QSizePolicy.Policy.Expanding)
 

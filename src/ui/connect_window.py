@@ -1,3 +1,6 @@
+#  Copyright (c) 2025-2026 Half_nothing
+#  SPDX-License-Identifier: MIT
+
 from datetime import datetime
 from os import getcwd
 from os.path import join
@@ -9,23 +12,21 @@ from PySide6.QtCore import QTimer, Signal
 from PySide6.QtWidgets import QMessageBox, QWidget
 from loguru import logger
 
-from src.config import config
-from src.core import VoiceClient
-from src.model import ConnectionState, RxBegin, RxEnd, VoiceConnectedState, VoicePacket, WebSocketMessage
-from src.signal import Signals
-from src.utils import get_line_edit_data
 from .client_window import ClientWindow
 from .controller_window import ControllerWindow
 from .form import Ui_ConnectWindow
-from ..constants import default_frame_time, default_frame_time_s
-from ..core.fsuipc_client import FSUIPCClient
+from src.config import config
+from src.core import VoiceClient, FSUIPCClient
+from src.model import ConnectionState, RxBegin, RxEnd, VoiceConnectedState, VoicePacket, WebSocketMessage
+from src.signal import AudioClientSignals
+from src.constants import default_frame_time, default_frame_time_s
 
 
 class ConnectWindow(QWidget, Ui_ConnectWindow):
     fsuipc_client_connected = Signal()
     fsuipc_client_connect_fail = Signal()
 
-    def __init__(self, voice_client: VoiceClient, signals: Signals):
+    def __init__(self, voice_client: VoiceClient, signals: AudioClientSignals):
         super().__init__()
         self.setupUi(self)
 
@@ -53,6 +54,7 @@ class ConnectWindow(QWidget, Ui_ConnectWindow):
 
         self.voice_client = voice_client
         self.button_connect.clicked.connect(self.connect_to_server)
+        self.button_exit.clicked.connect(lambda: signals.logout_request.emit())
         self.voice_client.signals.error_occurred.connect(self.handle_connect_error)
         self.voice_client.signals.connection_state_changed.connect(self.connect_state_changed)
         self.controller_window = ControllerWindow(voice_client)
@@ -61,19 +63,18 @@ class ConnectWindow(QWidget, Ui_ConnectWindow):
         self.windows.addWidget(self.controller_window)
         self.windows.addWidget(self.client_window)
         self.windows.setCurrentIndex(0)
-        self.button_exit.clicked.connect(lambda: signals.logout_request.emit())
         self.fsuipc_client_connected.connect(self.fsuipc_connect)
         self.fsuipc_client_connect_fail.connect(self.fsuipc_connection_fail)
-        signals.log_message.connect(self.log_message)
+        signals.show_log_message.connect(self.log_message)
 
         self.voice_client.signals.voice_data_sent.connect(self.tx_send)
         self.voice_client.signals.voice_data_received.connect(self.rx_receive)
-        self.last_data_receive = 0
+        self.last_data_receive: float = 0.0
         self.receive_timeout_timer = QTimer()
         self.receive_timeout_timer.timeout.connect(self.check_rx_timeout)
         self.receive_timeout_timer.setInterval(default_frame_time // 4)
         self.receive_timeout_timer.start()
-        self.last_data_send = 0
+        self.last_data_send: float = 0.0
         self.send_timeout_timer = QTimer()
         self.send_timeout_timer.timeout.connect(self.check_tx_timeout)
         self.send_timeout_timer.setInterval(default_frame_time // 4)
@@ -122,9 +123,6 @@ class ConnectWindow(QWidget, Ui_ConnectWindow):
         if self.voice_client.client_info.cid is None:
             return
         self.label_cid_v.setText(f"{self.voice_client.client_info.cid:04}")
-        self.line_edit_address.setText(config.server_host)
-        self.line_edit_tcp_port.setText(str(config.server_tcp_port))
-        self.line_edit_udp_port.setText(str(config.server_udp_port))
 
     def connect_to_server(self):
         if self._connected:
@@ -133,27 +131,11 @@ class ConnectWindow(QWidget, Ui_ConnectWindow):
             self._connected = False
             return
 
-        address = get_line_edit_data(self.line_edit_address, str)
-        tcp_port = get_line_edit_data(self.line_edit_tcp_port, int)
-        udp_port = get_line_edit_data(self.line_edit_udp_port, int)
-
-        if address is None:
-            logger.error(f"Address can't be empty")
-            return
-
-        if tcp_port is None:
-            logger.error(f"TCP port can't be empty")
-            return
-
-        if udp_port is None:
-            logger.error(f"UDP port can't be empty")
-            return
-
-        self.voice_client.connect_to_server(address, tcp_port, udp_port)
-        config.server_host = address
-        config.server_tcp_port = tcp_port
-        config.server_udp_port = udp_port
-        config.save_config()
+        self.voice_client.connect_to_server(
+            config.server.voice_endpoint,
+            config.server.voice_tcp_port,
+            config.server.voice_udp_port
+        )
 
     def connect_state_changed(self, state: ConnectionState):
         if state == ConnectionState.READY:
@@ -161,6 +143,7 @@ class ConnectWindow(QWidget, Ui_ConnectWindow):
             self._connected = True
             self.signals.broadcast_message.emit(WebSocketMessage(VoiceConnectedState(True)))
             self.label_callsign_v.setText(self.voice_client.client_info.callsign)
+            self.log_message("Network", "INFO", "成功连接至服务器")
             if self.voice_client.client_info.is_atc:
                 self.windows.setCurrentIndex(1)
             else:
@@ -169,6 +152,7 @@ class ConnectWindow(QWidget, Ui_ConnectWindow):
             self._connected = False
             self.signals.broadcast_message.emit(WebSocketMessage(VoiceConnectedState(False)))
             self.button_connect.setText("连接服务器")
+            self.log_message("Network", "INFO", "断开连接")
             self.label_callsign_v.setText("----")
             self.windows.setCurrentIndex(0)
 

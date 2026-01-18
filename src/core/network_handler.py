@@ -1,3 +1,6 @@
+#  Copyright (c) 2025-2026 Half_nothing
+#  SPDX-License-Identifier: MIT
+
 from json import dumps, loads
 from socket import AF_INET, SOCK_DGRAM, SOCK_STREAM, socket
 from struct import unpack
@@ -94,16 +97,23 @@ class NetworkHandler(QObject):
 
     # 接收信令
     def _tcp_receive_loop(self):
+        data_buffer = b""
         while self._tcp_running and self._tcp_socket:
             try:
                 data = self._tcp_socket.recv(4096)
                 if not data:
                     break
-                logger.trace(f"TCP receive from server: {data}")
-                self._process_control_message(data.decode())
+                logger.trace(f"TCP > receive from server: {data}")
+                data_buffer += data
+                if b'\n' in data_buffer:
+                    data, data_buffer = data_buffer.split(b'\n', 1)
+                    self._process_control_message(data)
+                elif len(data_buffer) > 4096:
+                    logger.error("TCP > receive buffer overflow")
+                    data_buffer = b""
             except Exception as e:
                 if self._tcp_running:
-                    logger.error(f"TCP receive error: {e}")
+                    logger.error(f"TCP > receive error: {e}")
                 break
         self.disconnect_from_server()
 
@@ -119,11 +129,11 @@ class NetworkHandler(QObject):
                 break
 
     # 处理信令
-    def _process_control_message(self, data: str):
+    def _process_control_message(self, data: bytes):
         try:
             message_dict = loads(data)
             message = ControlMessage(
-                type=MessageType(message_dict.get('type')),
+                type=MessageType(message_dict.get('type', 'pong')),
                 cid=message_dict.get('cid', 0),
                 callsign=message_dict.get('callsign', ''),
                 transmitter=message_dict.get('transmitter', 0),
@@ -140,7 +150,7 @@ class NetworkHandler(QObject):
                 return
             cid = unpack('<i', data[0:4])[0]
             transmitter = unpack('<b', data[4:5])[0]
-            frequency = unpack('<i', data[5:9])[0] + 100000
+            frequency = unpack('<i', data[5:9])[0]
             callsign_len = data[9]
             if 9 + callsign_len > len(data) - 1:
                 return

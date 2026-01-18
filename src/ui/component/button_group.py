@@ -3,8 +3,7 @@ from collections.abc import Callable
 from PySide6.QtCore import QObject
 
 from .selected_button import SelectedButton
-from ...core import VoiceClient
-from ...core.transmitter import Transmitter
+from src.core.voice.transmitter import Transmitter
 
 
 class ButtonGroup(QObject):

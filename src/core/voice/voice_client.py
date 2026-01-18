@@ -1,16 +1,19 @@
-from threading import Thread
+#  Copyright (c) 2025-2026 Half_nothing
+#  SPDX-License-Identifier: MIT
+
 from time import time
+from typing import Union
 
 from PySide6.QtCore import QObject, QTimer
 from loguru import logger
 
 from src.model.voice_models import ConnectionState, ControlMessage, MessageType, VoicePacket, VoicePacketBuilder
 from src.signal import AudioClientSignals
-from .audio_handler import AudioHandler
-from .client_info import ClientInfo
-from .network_handler import NetworkHandler
-from .transmitter import Transmitter
-from ..constants import default_frame_time, default_frame_time_s
+from src.core.voice.audio_handler import AudioHandler
+from src.core.client_info import ClientInfo
+from src.core.network_handler import NetworkHandler
+from src.core.voice.transmitter import Transmitter
+from src.constants import default_frame_time, default_frame_time_s
 
 
 # 语音客户端
@@ -85,42 +88,35 @@ class VoiceClient(QObject):
         self.transmitters.clear()
         self.client_info.clear()
 
-    def add_transmitter(self, transmitter: Transmitter, tx: bool, rx: bool):
+    def add_transmitter(self, transmitter: Transmitter):
         if transmitter.id is None:
             transmitter.id = len(self.transmitters.keys())
-        transmitter.frequency_change_callback = self.switch_frequency
-        transmitter.receive_flag_change_callback = self.switch_receive_flag
         self.transmitters[transmitter.id] = transmitter
-        self.switch_frequency(transmitter.id, transmitter.frequency, rx)
-        self._send_voice_data(b"")
-        if not tx:
-            self._current_transmitter = -1
+        self.update_transmitter(transmitter)
+        self._audio.add_transmitter(transmitter)
+        self._init_transmitters(transmitter)
 
     def remove_transmitter(self, transmitter_id: int):
         del self.transmitters[transmitter_id]
 
-    def switch_receive_flag(self, transmitter_id: int, frequency: int, rx: bool):
+    def update_transmitter(self, transmitter: Union[Transmitter, int]):
         if not self.client_ready:
             return
 
-        self.signals.update_current_frequency.emit(frequency)
+        if isinstance(transmitter, int):
+            if transmitter >= len(self.transmitters):
+                raise ValueError("Invalid transmitter id")
+            transmitter = self.transmitters[transmitter]
+        elif not isinstance(transmitter, Transmitter):
+            raise ValueError("Invalid transmitter")
 
-        message = ControlMessage(
-            type=MessageType.VOICE_RECEIVE,
-            cid=self.client_info.cid,
-            callsign=self.client_info.callsign,
-            transmitter=transmitter_id,
-            data=f"{frequency}:{'1' if rx else '0'}"
-        )
-        self._log_message("INFO", f"Switch {frequency / 1000:.3f}mHz receive flag to {rx}")
-        self._network.send_control_message(message)
+        frequency = transmitter.frequency
+        rx = transmitter.receive_flag
+        transmitter_id = transmitter.id
 
-    def switch_frequency(self, transmitter_id: int, frequency: int, rx: bool):
-        if not self.client_ready:
-            return
-
-        self._current_transmitter = transmitter_id
-        self.signals.update_current_frequency.emit(frequency)
+        if transmitter.send_flag:
+            self.signals.update_current_frequency.emit(frequency)
+            self._current_transmitter = transmitter_id
 
         message = ControlMessage(
             type=MessageType.SWITCH,
@@ -129,7 +125,7 @@ class VoiceClient(QObject):
             transmitter=transmitter_id,
             data=f"{frequency}:{'1' if rx else '0'}"
         )
-        self._log_message("INFO", f"Switch transmitter {transmitter_id} to {frequency / 1000:.3f}mHz receive flag {rx}")
+        self._log_message("INFO", f"Switch transmitter {transmitter} to {frequency / 1000:.3f}mHz receive flag {rx}")
         self._network.send_control_message(message)
 
     def send_text_message(self, target: str, message: str):
@@ -149,14 +145,26 @@ class VoiceClient(QObject):
             self._connection_state = state
             self.signals.connection_state_changed.emit(state)
 
+    def _init_transmitters(self, transmitter: Transmitter):
+        packet = VoicePacketBuilder.build_packet(self.client_info.cid,
+                                                 transmitter.id,
+                                                 transmitter.frequency,
+                                                 self.client_info.callsign,
+                                                 b"")
+        self._network.send_voice_packet(packet)
+
     def _send_voice_data(self, encoded_data: bytes):
         if not self.client_ready or self._current_transmitter == -1:
             return
 
+        transmitter = self.transmitters.get(self._current_transmitter, None)
+        if transmitter is None:
+            return
+
         self.signals.voice_data_sent.emit()
         packet = VoicePacketBuilder.build_packet(self.client_info.cid,
-                                                 self._current_transmitter,
-                                                 self.transmitters[self._current_transmitter].frequency,
+                                                 transmitter.id,
+                                                 transmitter.frequency,
                                                  self.client_info.callsign,
                                                  encoded_data)
         self._network.send_voice_packet(packet)
@@ -174,8 +182,7 @@ class VoiceClient(QObject):
                     self.client_info.callsign = data[1]
                     self._log_message("INFO", f"Starting heartbeat timer")
                     self._heartbeat_timer.start()
-                    self._audio.start_recording()
-                    self._audio.start_playback()
+                    self._audio.start()
                     if len(data) == 4:
                         self.client_info.main_frequency = int(data[-1])
                         self.client_info.is_atc = True
@@ -183,14 +190,13 @@ class VoiceClient(QObject):
                     self._log_message("INFO", "Identity verification passed")
         elif message.type == MessageType.DISCONNECT:
             self._heartbeat_timer.stop()
-            self._audio.stop_recording()
-            self._audio.stop_playback()
+            self._audio.cleanup()
             self._network.disconnect_from_server()
             self._set_connection_state(ConnectionState.DISCONNECTED)
 
     def _handle_voice_packet(self, packet: VoicePacket):
         self.receiving[packet.callsign] = time()
-        self._audio.play_encoded_audio(packet.data)
+        self._audio.play_encoded_audio(packet.transmitter, packet.data)
 
     def _handle_connection_status(self, connected: bool):
         if connected:

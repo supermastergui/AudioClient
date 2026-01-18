@@ -1,3 +1,6 @@
+#  Copyright (c) 2025-2026 Half_nothing
+#  SPDX-License-Identifier: MIT
+
 from threading import Thread
 from time import time
 from typing import Optional
@@ -41,6 +44,7 @@ class HttpClientManger(QObject):
 
     @property
     def client(self) -> Client:
+        assert self._http_client is not None, "Http client not initialized"
         return self._http_client
 
 

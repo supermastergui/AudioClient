@@ -1,3 +1,6 @@
+#  Copyright (c) 2025-2026 Half_nothing
+#  SPDX-License-Identifier: MIT
+
 from PySide6.QtWidgets import QWidget
 
 from .form import Ui_LoadingWindow

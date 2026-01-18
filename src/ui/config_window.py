@@ -1,8 +1,11 @@
+#  Copyright (c) 2025-2026 Half_nothing
+#  SPDX-License-Identifier: MIT
+
 from PySide6.QtWidgets import QWidget
 from loguru import logger
 
 from .form import Ui_ConfigWindow
-from src.config import config
+from src.config import config, config_manager
 from src.signal import AudioClientSignals
 from src.utils import get_device_info, get_host_api_info
 
@@ -11,13 +14,13 @@ class ConfigWindow(QWidget, Ui_ConfigWindow):
     def __init__(self, audio_signal: AudioClientSignals):
         super().__init__()
         self.setupUi(self)
-        config.add_config_save_callback(self.update_config_data)
+        config_manager.register_save_callback(self.update_config_data)
 
         self.audio_signal = audio_signal
 
         self._audio_drivers = get_host_api_info()
-        self._audio_inputs = {}
-        self._audio_outputs = {}
+        self._audio_inputs: dict[str, int] = {}
+        self._audio_outputs: dict[str, int] = {}
         self.combo_box_audio_driver.addItem("自动")
         for driver in self._audio_drivers:
             self.combo_box_audio_driver.addItem(driver)
@@ -30,9 +33,9 @@ class ConfigWindow(QWidget, Ui_ConfigWindow):
         self.combo_box_audio_output.currentTextChanged.connect(self.audio_output_device_change)
         self.audio_output_device_change(self.combo_box_audio_output.currentText())
 
-        self.button_cancel.clicked.connect(self.cancel_config_data)
-        self.button_apply.clicked.connect(self.apply_config_data)
-        self.button_ok.clicked.connect(self.save_config_data)
+        self.button_cancel.clicked.connect(self.cancel)
+        self.button_apply.clicked.connect(self.apply)
+        self.button_ok.clicked.connect(self.save)
 
         self.button_ptt.select_message = "按下ESC退出"
 
@@ -71,39 +74,46 @@ class ConfigWindow(QWidget, Ui_ConfigWindow):
             self.combo_box_audio_output.addItem(output_device)
         self.combo_box_audio_output.setCurrentIndex(0)
 
-    def update_config_data(self):
-        self.label_config_version_2.setText(config.config_version)
-        self.check_box_remember_me.setChecked(config.remember_me)
-        self.check_box_debug_mode.setChecked(config.debug_mode)
-        self.combo_box_log_level.setCurrentText(config.log_level.upper())
-        self.line_edit_account.setText(config.account)
-        self.line_edit_password.setText(config.password)
-        self.line_edit_server_address.setText(config.server_host)
-        self.line_edit_tcp_port.setText(str(config.server_tcp_port))
-        self.line_edit_udp_port.setText(str(config.server_udp_port))
-        self.combo_box_audio_driver.setCurrentText(config.audio_driver)
-        self.combo_box_audio_input.setCurrentText(config.audio_input)
-        self.combo_box_audio_output.setCurrentText(config.audio_output)
-        self.button_ptt.selected_key = config.ptt_key
+    def update_config_data(self) -> bool:
+        self.label_config_version_2.setText(config.version)
+        self.combo_box_log_level.setCurrentText(config.log.level.upper())
 
-    def save_config_data(self):
-        self.apply_config_data()
+        self.line_edit_account.setText(config.account.username)
+        self.line_edit_password.setText(config.account.password)
+        self.check_box_remember_me.setChecked(config.account.remember_me)
+
+        self.line_edit_server_address.setText(config.server.voice_endpoint)
+        self.line_edit_tcp_port.setText(str(config.server.voice_tcp_port))
+        self.line_edit_udp_port.setText(str(config.server.voice_udp_port))
+
+        self.combo_box_audio_driver.setCurrentText(config.audio.api_driver)
+        self.combo_box_audio_input.setCurrentText(config.audio.input_device)
+        self.combo_box_audio_output.setCurrentText(config.audio.output_device)
+        self.button_ptt.selected_key = config.audio.ptt_key
+
+        return True
+
+    def save(self):
+        self.apply()
         self.hide()
 
-    def apply_config_data(self):
-        config.remember_me = self.check_box_remember_me.isChecked()
-        config.debug_mode = self.check_box_debug_mode.isChecked()
-        config.log_level = self.combo_box_log_level.currentText().upper()
-        config.account = self.line_edit_account.text()
-        config.password = self.line_edit_password.text()
-        config.server_host = self.line_edit_server_address.text()
-        config.server_tcp_port = int(self.line_edit_tcp_port.text())
-        config.server_udp_port = int(self.line_edit_udp_port.text())
-        config.audio_driver = self.combo_box_audio_driver.currentText()
-        config.audio_input = self.combo_box_audio_input.currentText()
-        config.audio_output = self.combo_box_audio_output.currentText()
-        config.ptt_key = self.button_ptt.selected_key
-        config.save_config()
+    def apply(self):
+        config.log.level = self.combo_box_log_level.currentText().upper()
 
-    def cancel_config_data(self):
+        config.account.username = self.line_edit_account.text()
+        config.account.password = self.line_edit_password.text()
+        config.account.remember_me = self.check_box_remember_me.isChecked()
+
+        config.server.voice_endpoint = self.line_edit_server_address.text()
+        config.server.voice_tcp_port = int(self.line_edit_tcp_port.text())
+        config.server.voice_udp_port = int(self.line_edit_udp_port.text())
+
+        config.audio.api_driver = self.combo_box_audio_driver.currentText()
+        config.audio.input_device = self.combo_box_audio_input.currentText()
+        config.audio.output_device = self.combo_box_audio_output.currentText()
+        config.audio.ptt_key = self.button_ptt.selected_key
+
+        config_manager.save()
+
+    def cancel(self):
         self.hide()

@@ -71,16 +71,6 @@ class Ui_ConfigWindow(object):
 
         self.layout_form.addWidget(self.line_edit_udp_port, 6, 1, 1, 2)
 
-        self.check_box_debug_mode = QCheckBox(ConfigWindow)
-        self.check_box_debug_mode.setObjectName(u"check_box_debug_mode")
-        sizePolicy1 = QSizePolicy(QSizePolicy.Policy.Minimum, QSizePolicy.Policy.Fixed)
-        sizePolicy1.setHorizontalStretch(0)
-        sizePolicy1.setVerticalStretch(0)
-        sizePolicy1.setHeightForWidth(self.check_box_debug_mode.sizePolicy().hasHeightForWidth())
-        self.check_box_debug_mode.setSizePolicy(sizePolicy1)
-
-        self.layout_form.addWidget(self.check_box_debug_mode, 1, 2, 1, 1)
-
         self.line_edit_account = QLineEdit(ConfigWindow)
         self.line_edit_account.setObjectName(u"line_edit_account")
 
@@ -103,11 +93,11 @@ class Ui_ConfigWindow(object):
         self.combo_box_log_level.addItem("")
         self.combo_box_log_level.addItem("")
         self.combo_box_log_level.setObjectName(u"combo_box_log_level")
-        sizePolicy2 = QSizePolicy(QSizePolicy.Policy.Preferred, QSizePolicy.Policy.Fixed)
-        sizePolicy2.setHorizontalStretch(0)
-        sizePolicy2.setVerticalStretch(0)
-        sizePolicy2.setHeightForWidth(self.combo_box_log_level.sizePolicy().hasHeightForWidth())
-        self.combo_box_log_level.setSizePolicy(sizePolicy2)
+        sizePolicy1 = QSizePolicy(QSizePolicy.Policy.Preferred, QSizePolicy.Policy.Fixed)
+        sizePolicy1.setHorizontalStretch(0)
+        sizePolicy1.setVerticalStretch(0)
+        sizePolicy1.setHeightForWidth(self.combo_box_log_level.sizePolicy().hasHeightForWidth())
+        self.combo_box_log_level.setSizePolicy(sizePolicy1)
 
         self.layout_form.addWidget(self.combo_box_log_level, 1, 1, 1, 1)
 
@@ -153,6 +143,7 @@ class Ui_ConfigWindow(object):
 
         self.line_edit_password = QLineEdit(ConfigWindow)
         self.line_edit_password.setObjectName(u"line_edit_password")
+        self.line_edit_password.setEchoMode(QLineEdit.EchoMode.Password)
 
         self.layout_form.addWidget(self.line_edit_password, 3, 1, 1, 2)
 
@@ -222,28 +213,28 @@ class Ui_ConfigWindow(object):
         self.layout_buttons.setObjectName(u"layout_buttons")
         self.button_ok = QPushButton(ConfigWindow)
         self.button_ok.setObjectName(u"button_ok")
-        sizePolicy3 = QSizePolicy(QSizePolicy.Policy.Fixed, QSizePolicy.Policy.Fixed)
-        sizePolicy3.setHorizontalStretch(1)
-        sizePolicy3.setVerticalStretch(0)
-        sizePolicy3.setHeightForWidth(self.button_ok.sizePolicy().hasHeightForWidth())
-        self.button_ok.setSizePolicy(sizePolicy3)
+        sizePolicy2 = QSizePolicy(QSizePolicy.Policy.Fixed, QSizePolicy.Policy.Fixed)
+        sizePolicy2.setHorizontalStretch(1)
+        sizePolicy2.setVerticalStretch(0)
+        sizePolicy2.setHeightForWidth(self.button_ok.sizePolicy().hasHeightForWidth())
+        self.button_ok.setSizePolicy(sizePolicy2)
 
         self.layout_buttons.addWidget(self.button_ok)
 
         self.button_apply = QPushButton(ConfigWindow)
         self.button_apply.setObjectName(u"button_apply")
-        sizePolicy4 = QSizePolicy(QSizePolicy.Policy.Fixed, QSizePolicy.Policy.Fixed)
-        sizePolicy4.setHorizontalStretch(0)
-        sizePolicy4.setVerticalStretch(0)
-        sizePolicy4.setHeightForWidth(self.button_apply.sizePolicy().hasHeightForWidth())
-        self.button_apply.setSizePolicy(sizePolicy4)
+        sizePolicy3 = QSizePolicy(QSizePolicy.Policy.Fixed, QSizePolicy.Policy.Fixed)
+        sizePolicy3.setHorizontalStretch(0)
+        sizePolicy3.setVerticalStretch(0)
+        sizePolicy3.setHeightForWidth(self.button_apply.sizePolicy().hasHeightForWidth())
+        self.button_apply.setSizePolicy(sizePolicy3)
 
         self.layout_buttons.addWidget(self.button_apply)
 
         self.button_cancel = QPushButton(ConfigWindow)
         self.button_cancel.setObjectName(u"button_cancel")
-        sizePolicy3.setHeightForWidth(self.button_cancel.sizePolicy().hasHeightForWidth())
-        self.button_cancel.setSizePolicy(sizePolicy3)
+        sizePolicy2.setHeightForWidth(self.button_cancel.sizePolicy().hasHeightForWidth())
+        self.button_cancel.setSizePolicy(sizePolicy2)
 
         self.layout_buttons.addWidget(self.button_cancel)
 
@@ -267,7 +258,6 @@ class Ui_ConfigWindow(object):
     def retranslateUi(self, ConfigWindow):
         ConfigWindow.setWindowTitle(QCoreApplication.translate("ConfigWindow", u"\u9996\u9009\u9879", None))
         self.label_udp_port.setText(QCoreApplication.translate("ConfigWindow", u"UDP\u7aef\u53e3", None))
-        self.check_box_debug_mode.setText(QCoreApplication.translate("ConfigWindow", u"\u8c03\u8bd5\u6a21\u5f0f", None))
         self.label_audio_input.setText(QCoreApplication.translate("ConfigWindow", u"\u97f3\u9891\u8f93\u5165", None))
         self.combo_box_log_level.setItemText(0, QCoreApplication.translate("ConfigWindow", u"TRACE", None))
         self.combo_box_log_level.setItemText(1, QCoreApplication.translate("ConfigWindow", u"DEBUG", None))

@@ -1,3 +1,6 @@
+#  Copyright (c) 2025-2026 Half_nothing
+#  SPDX-License-Identifier: MIT
+
 import sys
 from time import time
 
@@ -16,8 +19,9 @@ def main() -> None:
     try:
         from opuslib.api import libopus
     except FileNotFoundError:
-        logger.error("can't found opuslib")
-        exit(1)
+        logger.critical("can't found opuslib")
+    except OSError:
+        logger.critical("can't load opuslib")
 
     start_time = time()
     last_time = start_time
@@ -41,8 +45,8 @@ def main() -> None:
     last_time = time()
     logger.trace("Creating main window")
     from src.ui.main_window import MainWindow
-    from src.signal import Signals, MouseSignals, KeyBoardSignals
-    main_window = MainWindow(Signals(), MouseSignals(), KeyBoardSignals())
+    from src.signal import AudioClientSignals, MouseSignals, KeyBoardSignals
+    main_window = MainWindow(AudioClientSignals(), MouseSignals(), KeyBoardSignals())
     logger.trace(f"Create main window cost {time() - last_time:.6f}s")
 
     logger.info(f"Startup completed in {time() - start_time:.6f}s")

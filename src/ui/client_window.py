@@ -1,3 +1,6 @@
+#  Copyright (c) 2025-2026 Half_nothing
+#  SPDX-License-Identifier: MIT
+
 from threading import Event, Thread
 from time import sleep
 
@@ -7,7 +10,7 @@ from loguru import logger
 from .form import Ui_ClientWindow
 from ..core import VoiceClient
 from ..core.fsuipc_client import FSUIPCClient
-from ..model import ConnectionState
+from src.core.voice.transmitter import Transmitter
 
 
 class ClientWindow(QWidget, Ui_ClientWindow):
@@ -21,28 +24,30 @@ class ClientWindow(QWidget, Ui_ClientWindow):
         self.voice_client = voice_client
         self.fsuipc_client = fsuipc_client
         self.thread_exit = Event()
-        self.com1_freq = 0
-        self.com2_freq = 0
-        self.com1_rx = False
-        self.com2_rx = False
-        self.overwrite_com1_freq = 0
-        self.overwrite_com2_freq = 0
+        self.com1_transmitter = Transmitter(122800, False)
+        self.com2_transmitter = Transmitter(121500, False)
+
+    def set_com1_frequency(self, frequency: int):
+        self.fsuipc_client.set_com1_frequency(frequency)
+        self.com1_transmitter.frequency = frequency
+
+    def set_com2_frequency(self, frequency: int):
+        self.fsuipc_client.set_com2_frequency(frequency)
+        self.com2_transmitter.frequency = frequency
 
     def com1_freq_tx_clicked(self):
         self.button_com2_tx.active = False
         if self.button_com1_tx.active:
-            self.voice_client.switch_frequency(self.com1_freq, 0)
-        else:
-            self.voice_client.clear_frequency()
+            self.voice_client.update_transmitter(self.com1_transmitter)
 
     def com2_freq_tx_clicked(self):
         self.button_com1_tx.active = False
         if self.button_com2_tx.active:
-            self.voice_client.switch_frequency(self.com2_freq, 1)
-        else:
-            self.voice_client.clear_frequency()
+            self.voice_client.update_transmitter(self.com2_transmitter)
 
     def start(self):
+        self.voice_client.add_transmitter(self.com1_transmitter, False, False)
+        self.voice_client.add_transmitter(self.com2_transmitter, False, False)
         self.thread_exit.clear()
         Thread(target=self._receive_frequency, daemon=True).start()
 
@@ -66,26 +71,20 @@ class ClientWindow(QWidget, Ui_ClientWindow):
             sleep(1)
 
     def update_com_info(self, com1_freq: int, com2_freq: int, com1_rx: bool, com2_rx: bool):
-        if self.com1_freq != com1_freq:
-            if self.com1_freq != 0:
-                self.voice_client.set_transmitter_receive_flag(self.com1_freq, False)
-            self.voice_client.set_transmitter_receive_flag(com1_freq, self.com1_rx | com1_rx)
+        if self.com1_transmitter.receive_flag != com1_rx:
+            self.com1_transmitter.receive_flag = com1_rx
+            self.button_com1_rx.active = com1_rx
+
+        if self.com1_transmitter.frequency != com1_freq:
             self.label_com1_freq.setText(f"{com1_freq / 1000:.3f}")
             if self.button_com1_tx.active:
-                self.voice_client.switch_frequency(com1_freq, 0)
-            self.com1_freq = com1_freq
+                self.com1_transmitter.frequency = com1_freq
 
-        if self.com2_freq != com2_freq:
-            if self.com2_freq != 0:
-                self.voice_client.set_transmitter_receive_flag(self.com2_freq, False)
-            self.voice_client.set_transmitter_receive_flag(com2_freq, self.com2_rx | com2_rx)
+        if self.com2_transmitter.receive_flag != com2_rx:
+            self.com2_transmitter.receive_flag = com2_rx
+            self.button_com2_rx.active = com2_rx
+
+        if self.com2_transmitter.frequency != com2_freq:
             self.label_com2_freq.setText(f"{com2_freq / 1000:.3f}")
             if self.button_com2_tx.active:
-                self.voice_client.switch_frequency(com2_freq, 1)
-            self.com2_freq = com2_freq
-
-        self.button_com1_rx.active = self.com1_rx | com1_rx
-        self.com1_rx = com1_rx
-
-        self.button_com2_rx.active = self.com2_rx | com2_rx
-        self.com2_rx = com2_rx
+                self.com2_transmitter.frequency = com2_freq

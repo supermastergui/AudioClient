@@ -1,3 +1,6 @@
+#  Copyright (c) 2025-2026 Half_nothing
+#  SPDX-License-Identifier: MIT
+
 from asyncio import get_running_loop, new_event_loop, set_event_loop
 from json import dumps
 from typing import Optional, Set

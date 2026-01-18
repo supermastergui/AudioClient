@@ -10,3 +10,4 @@ logs/
 /config/
 dist/
 build/
+test.py

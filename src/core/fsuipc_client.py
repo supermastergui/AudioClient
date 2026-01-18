@@ -1,3 +1,6 @@
+#  Copyright (c) 2025-2026 Half_nothing
+#  SPDX-License-Identifier: MIT
+
 from ctypes import POINTER, Structure, c_bool, c_char_p, c_int32, cdll, c_uint8
 from dataclasses import dataclass
 
@@ -29,6 +32,10 @@ class FSUIPCClient:
         fsuipc_lib.ReadFrequencyInfo.restype = POINTER(CReturnValue)
         fsuipc_lib.CloseFSUIPCClient.restype = POINTER(CReturnValue)
         fsuipc_lib.GetConnectionState.restype = POINTER(CReturnValue)
+        fsuipc_lib.SetCom1Frequency.argtypes = [c_int32]
+        fsuipc_lib.SetCom1Frequency.restype = POINTER(CReturnValue)
+        fsuipc_lib.SetCom2Frequency.argtypes = [c_int32]
+        fsuipc_lib.SetCom2Frequency.restype = POINTER(CReturnValue)
         fsuipc_lib.FreeMemory.argtypes = [POINTER(CReturnValue)]
         fsuipc_lib.FreeMemory.restype = None
         self._fsuipc_lib = fsuipc_lib
@@ -45,11 +52,17 @@ class FSUIPCClient:
     def get_frequency(self) -> ReturnValue:
         return self._call_function("ReadFrequencyInfo")
 
-    def _call_function(self, function_name: str) -> ReturnValue:
+    def set_com1_frequency(self, frequency: int) -> ReturnValue:
+        return self._call_function("SetCom1Frequency", frequency)
+
+    def set_com2_frequency(self, frequency: int) -> ReturnValue:
+        return self._call_function("SetCom2Frequency", frequency)
+
+    def _call_function(self, function_name: str, *args) -> ReturnValue:
         if not hasattr(self._fsuipc_lib, function_name):
             raise AttributeError(f"Function {function_name} not available")
         function = getattr(self._fsuipc_lib, function_name)
-        function_return = function()
+        function_return = function(*args)
         try:
             result = ReturnValue(function_return.contents.requestStatus,
                                  function_return.contents.errMessage.decode(),

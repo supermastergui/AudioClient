@@ -1,2 +1,2 @@
-from .config_loader import config
+from .config import config, config_manager
 
