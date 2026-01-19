@@ -128,7 +128,7 @@ class MainWindow(QMainWindow, Ui_MainWindow):
         self.signals.connection_state_changed.connect(self.handle_connect_status_change)
 
         self.menubar.setVisible(True)
-        self.resize(450, 450)
+        self.resize(600, 600)
         self.center()
         self.windows.setCurrentIndex(1)
         self.loading.stop_animation()
