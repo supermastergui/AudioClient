@@ -29,15 +29,12 @@ def get_line_edit_int(line: QLineEdit) -> Optional[int]:
         show_error(line)
         return None
     try:
-        data = int(data)
         clear_error(line)
-        return data
+        return int(data)
     except ValueError:
         show_error(line)
         return None
 
-
-T = TypeVar("T", bound=type)
 
 _handlers = {
     str: get_line_edit_str,
@@ -53,9 +50,9 @@ def get_line_edit_data(line: QLineEdit, data_type: Type[str]) -> Optional[str]: 
 def get_line_edit_data(line: QLineEdit, data_type: Type[int]) -> Optional[int]: ...
 
 
-def get_line_edit_data(line: QLineEdit, data_type: Type[T]) -> Optional[T]:
+def get_line_edit_data(line: QLineEdit, data_type: Type[int | str]) -> Optional[int | str]:
     handler = _handlers.get(data_type)
     if handler is not None:
         result = handler(line)
-        return cast(Optional[T], result)
+        return cast(Optional[int | str], result)
     return None

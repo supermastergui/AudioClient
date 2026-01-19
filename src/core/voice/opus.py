@@ -8,7 +8,7 @@ from loguru import logger
 from numpy import float32, frombuffer, int16, ndarray
 from opuslib import APPLICATION_VOIP, Decoder, Encoder
 
-from src.constants import opus_default_bitrate, opus_default_sample_rate
+from src.constants import default_frame_size, opus_default_bitrate, opus_default_sample_rate
 
 
 @dataclass
@@ -29,7 +29,7 @@ class OpusDecoder:
                     f"channels {args.channel}, frame size {self._frame_size}")
 
     def update(self, args: SteamArgs):
-        self._frame_size = args.frame_size
+        self._frame_size = args.channel * default_frame_size
         self._decoder = Decoder(opus_default_sample_rate, args.channel)
 
     def decode(self, encoded_data: bytes) -> Optional[ndarray]:
@@ -58,7 +58,7 @@ class OpusEncoder:
                     f"channels {args.channel}, frame size {self._frame_size}")
 
     def update(self, args: SteamArgs):
-        self._frame_size = args.frame_size
+        self._frame_size = args.channel * default_frame_size
 
         self._encoder = Encoder(opus_default_sample_rate, args.channel, APPLICATION_VOIP)
         self._encoder.bitrate = opus_default_bitrate

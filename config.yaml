@@ -1,7 +1,7 @@
 account:
   password: '123456'
   remember_me: true
-  username: '2352'
+  username: '111'
 audio:
   api_driver: "\u81EA\u52A8"
   input_device: "\u9ED8\u8BA4"
@@ -9,7 +9,7 @@ audio:
   ptt_key: Key.ctrl_l
 log:
   compression: zip
-  level: trace
+  level: TRACE
   path: logs/{time}.log
   retention: 7 days
   rotation: 1 day

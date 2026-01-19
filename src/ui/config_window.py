@@ -80,7 +80,6 @@ class ConfigWindow(QWidget, Ui_ConfigWindow):
 
         self.line_edit_account.setText(config.account.username)
         self.line_edit_password.setText(config.account.password)
-        self.check_box_remember_me.setChecked(config.account.remember_me)
 
         self.line_edit_server_address.setText(config.server.voice_endpoint)
         self.line_edit_tcp_port.setText(str(config.server.voice_tcp_port))
@@ -102,7 +101,6 @@ class ConfigWindow(QWidget, Ui_ConfigWindow):
 
         config.account.username = self.line_edit_account.text()
         config.account.password = self.line_edit_password.text()
-        config.account.remember_me = self.check_box_remember_me.isChecked()
 
         config.server.voice_endpoint = self.line_edit_server_address.text()
         config.server.voice_tcp_port = int(self.line_edit_tcp_port.text())

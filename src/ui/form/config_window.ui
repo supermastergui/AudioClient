@@ -6,14 +6,14 @@
    <rect>
     <x>0</x>
     <y>0</y>
-    <width>451</width>
-    <height>374</height>
+    <width>449</width>
+    <height>376</height>
    </rect>
   </property>
   <property name="minimumSize">
    <size>
-    <width>451</width>
-    <height>162</height>
+    <width>0</width>
+    <height>0</height>
    </size>
   </property>
   <property name="font">
@@ -45,7 +45,14 @@
       <number>3</number>
      </property>
      <item row="9" column="1" colspan="2">
-      <widget class="QComboBox" name="combo_box_audio_output"/>
+      <widget class="QComboBox" name="combo_box_audio_output">
+       <property name="sizePolicy">
+        <sizepolicy hsizetype="Preferred" vsizetype="Fixed">
+         <horstretch>0</horstretch>
+         <verstretch>0</verstretch>
+        </sizepolicy>
+       </property>
+      </widget>
      </item>
      <item row="6" column="0">
       <widget class="QLabel" name="label_udp_port">
@@ -67,16 +74,44 @@
       </widget>
      </item>
      <item row="4" column="1" colspan="2">
-      <widget class="QLineEdit" name="line_edit_server_address"/>
+      <widget class="QLineEdit" name="line_edit_server_address">
+       <property name="sizePolicy">
+        <sizepolicy hsizetype="Preferred" vsizetype="Fixed">
+         <horstretch>0</horstretch>
+         <verstretch>0</verstretch>
+        </sizepolicy>
+       </property>
+      </widget>
      </item>
      <item row="7" column="1" colspan="2">
-      <widget class="QComboBox" name="combo_box_audio_driver"/>
+      <widget class="QComboBox" name="combo_box_audio_driver">
+       <property name="sizePolicy">
+        <sizepolicy hsizetype="Preferred" vsizetype="Fixed">
+         <horstretch>0</horstretch>
+         <verstretch>0</verstretch>
+        </sizepolicy>
+       </property>
+      </widget>
      </item>
      <item row="6" column="1" colspan="2">
-      <widget class="QLineEdit" name="line_edit_udp_port"/>
+      <widget class="QLineEdit" name="line_edit_udp_port">
+       <property name="sizePolicy">
+        <sizepolicy hsizetype="Preferred" vsizetype="Fixed">
+         <horstretch>0</horstretch>
+         <verstretch>0</verstretch>
+        </sizepolicy>
+       </property>
+      </widget>
      </item>
      <item row="2" column="1" colspan="2">
-      <widget class="QLineEdit" name="line_edit_account"/>
+      <widget class="QLineEdit" name="line_edit_account">
+       <property name="sizePolicy">
+        <sizepolicy hsizetype="Preferred" vsizetype="Fixed">
+         <horstretch>0</horstretch>
+         <verstretch>0</verstretch>
+        </sizepolicy>
+       </property>
+      </widget>
      </item>
      <item row="8" column="0">
       <widget class="QLabel" name="label_audio_input">
@@ -97,56 +132,25 @@
        </property>
       </widget>
      </item>
-     <item row="1" column="1">
-      <widget class="QComboBox" name="combo_box_log_level">
+     <item row="8" column="1" colspan="2">
+      <widget class="QComboBox" name="combo_box_audio_input">
        <property name="sizePolicy">
         <sizepolicy hsizetype="Preferred" vsizetype="Fixed">
          <horstretch>0</horstretch>
          <verstretch>0</verstretch>
         </sizepolicy>
        </property>
-       <item>
-        <property name="text">
-         <string>TRACE</string>
-        </property>
-       </item>
-       <item>
-        <property name="text">
-         <string>DEBUG</string>
-        </property>
-       </item>
-       <item>
-        <property name="text">
-         <string>INFO</string>
-        </property>
-       </item>
-       <item>
-        <property name="text">
-         <string>SUCCESS</string>
-        </property>
-       </item>
-       <item>
-        <property name="text">
-         <string>WARNING</string>
-        </property>
-       </item>
-       <item>
-        <property name="text">
-         <string>ERROR</string>
-        </property>
-       </item>
-       <item>
-        <property name="text">
-         <string>CRITICAL</string>
-        </property>
-       </item>
       </widget>
      </item>
-     <item row="8" column="1" colspan="2">
-      <widget class="QComboBox" name="combo_box_audio_input"/>
-     </item>
      <item row="5" column="1" colspan="2">
-      <widget class="QLineEdit" name="line_edit_tcp_port"/>
+      <widget class="QLineEdit" name="line_edit_tcp_port">
+       <property name="sizePolicy">
+        <sizepolicy hsizetype="Preferred" vsizetype="Fixed">
+         <horstretch>0</horstretch>
+         <verstretch>0</verstretch>
+        </sizepolicy>
+       </property>
+      </widget>
      </item>
      <item row="1" column="0">
       <widget class="QLabel" name="label_log_level">
@@ -207,6 +211,12 @@
      </item>
      <item row="10" column="1" colspan="2">
       <widget class="HotkeyButton" name="button_ptt">
+       <property name="sizePolicy">
+        <sizepolicy hsizetype="Preferred" vsizetype="Fixed">
+         <horstretch>0</horstretch>
+         <verstretch>0</verstretch>
+        </sizepolicy>
+       </property>
        <property name="minimumSize">
         <size>
          <width>0</width>
@@ -220,28 +230,14 @@
      </item>
      <item row="3" column="1" colspan="2">
       <widget class="QLineEdit" name="line_edit_password">
+       <property name="sizePolicy">
+        <sizepolicy hsizetype="Preferred" vsizetype="Fixed">
+         <horstretch>0</horstretch>
+         <verstretch>0</verstretch>
+        </sizepolicy>
+       </property>
        <property name="echoMode">
         <enum>QLineEdit::EchoMode::Password</enum>
-       </property>
-      </widget>
-     </item>
-     <item row="0" column="1">
-      <widget class="QLabel" name="label_config_version_2">
-       <property name="minimumSize">
-        <size>
-         <width>0</width>
-         <height>23</height>
-        </size>
-       </property>
-       <property name="text">
-        <string>1.0.0</string>
-       </property>
-      </widget>
-     </item>
-     <item row="0" column="2">
-      <widget class="QCheckBox" name="check_box_remember_me">
-       <property name="text">
-        <string>记住我</string>
        </property>
       </widget>
      </item>
@@ -357,6 +353,64 @@
        <property name="text">
         <string>配置文件版本</string>
        </property>
+      </widget>
+     </item>
+     <item row="0" column="1" colspan="2">
+      <widget class="QLabel" name="label_config_version_2">
+       <property name="minimumSize">
+        <size>
+         <width>0</width>
+         <height>23</height>
+        </size>
+       </property>
+       <property name="text">
+        <string>1.0.0</string>
+       </property>
+      </widget>
+     </item>
+     <item row="1" column="1" colspan="2">
+      <widget class="QComboBox" name="combo_box_log_level">
+       <property name="sizePolicy">
+        <sizepolicy hsizetype="Preferred" vsizetype="Fixed">
+         <horstretch>0</horstretch>
+         <verstretch>0</verstretch>
+        </sizepolicy>
+       </property>
+       <item>
+        <property name="text">
+         <string>TRACE</string>
+        </property>
+       </item>
+       <item>
+        <property name="text">
+         <string>DEBUG</string>
+        </property>
+       </item>
+       <item>
+        <property name="text">
+         <string>INFO</string>
+        </property>
+       </item>
+       <item>
+        <property name="text">
+         <string>SUCCESS</string>
+        </property>
+       </item>
+       <item>
+        <property name="text">
+         <string>WARNING</string>
+        </property>
+       </item>
+       <item>
+        <property name="text">
+         <string>ERROR</string>
+        </property>
+       </item>
+       <item>
+        <property name="text">
+         <string>CRITICAL</string>
+        </property>
+       </item>
       </widget>
      </item>
     </layout>

@@ -3,7 +3,7 @@
 ################################################################################
 ## Form generated from reading UI file 'main_window.ui'
 ##
-## Created by: Qt User Interface Compiler version 6.9.1
+## Created by: Qt User Interface Compiler version 6.10.0
 ##
 ## WARNING! All changes made in this file will be lost when recompiling UI file!
 ################################################################################
@@ -35,7 +35,7 @@ class Ui_MainWindow(object):
         self.action_settings = QAction(MainWindow)
         self.action_settings.setObjectName(u"action_settings")
         icon1 = QIcon()
-        icon1.addFile(u":/icon/setting", QSize(), QIcon.Mode.Normal, QIcon.State.Off)
+        icon1.addFile(u":/icon/icon/settings.svg", QSize(), QIcon.Mode.Normal, QIcon.State.Off)
         self.action_settings.setIcon(icon1)
         self.action_about = QAction(MainWindow)
         self.action_about.setObjectName(u"action_about")

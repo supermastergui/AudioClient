@@ -18,7 +18,8 @@ dependencies = [
     "soxr>=1.0.0",
     "websockets>=15.0.1",
     "pydantic>=2.12.5",
-    "pyyaml>=6.0.3"
+    "pyyaml>=6.0.3",
+    "soundfile>=0.13.1"
 ]
 requires-python = "==3.12.*"
 readme = "README.md"

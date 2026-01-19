@@ -5,6 +5,8 @@ from dataclasses import dataclass
 from enum import Enum
 from struct import pack
 
+from pydantic import BaseModel
+
 
 class MessageType(str, Enum):
     SWITCH = "channel"
@@ -25,22 +27,12 @@ class ConnectionState(Enum):
     READY = 4
 
 
-@dataclass
-class ControlMessage:
+class ControlMessage(BaseModel):
     type: MessageType
     cid: int = 0
     callsign: str = ""
     transmitter: int = 0
     data: str = ""
-
-    def to_dict(self) -> dict:
-        return {
-            "type": self.type.value,
-            "cid": self.cid,
-            "callsign": self.callsign,
-            "transmitter": self.transmitter,
-            "data": self.data
-        }
 
 
 @dataclass

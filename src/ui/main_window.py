@@ -17,15 +17,16 @@ from .loading_window import LoadingWindow
 from .login_window import LoginWindow
 from src.constants import app_title
 from src.utils import http
-from src.model import ConnectionState
+from src.model import ConnectionState, ClientInfo
 from src.config import config, config_manager
 from src.thread import KeyboardListenerThread, MouseListenerThread
-from src.core import VoiceClient, ClientInfo, WebSocketBroadcastServer
+from src.core import VoiceClient, WebSocketBroadcastServer
 from src.signal import AudioClientSignals, MouseSignals, KeyBoardSignals
 
 
 class MainWindow(QMainWindow, Ui_MainWindow):
-    def __init__(self, signals: AudioClientSignals, mouse_signals: MouseSignals, keyboard_signals: KeyBoardSignals) -> None:
+    def __init__(self, signals: AudioClientSignals, mouse_signals: MouseSignals,
+                 keyboard_signals: KeyBoardSignals) -> None:
         super().__init__()
         logger.trace("Creating main window")
 
@@ -91,11 +92,6 @@ class MainWindow(QMainWindow, Ui_MainWindow):
         self.setMinimumSize(0, 0)
 
         client_info = ClientInfo()
-
-        def log_message(source: str, level: str, content: str):
-            logger.log(level, f"{source} > {content}")
-
-        self.signals.log_message.connect(log_message)
 
         self.voice_client = VoiceClient(client_info, self.signals)
 

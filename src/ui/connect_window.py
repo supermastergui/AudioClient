@@ -55,8 +55,8 @@ class ConnectWindow(QWidget, Ui_ConnectWindow):
         self.voice_client = voice_client
         self.button_connect.clicked.connect(self.connect_to_server)
         self.button_exit.clicked.connect(lambda: signals.logout_request.emit())
-        self.voice_client.signals.error_occurred.connect(self.handle_connect_error)
-        self.voice_client.signals.connection_state_changed.connect(self.connect_state_changed)
+        signals.error_occurred.connect(self.handle_connect_error)
+        signals.connection_state_changed.connect(self.connect_state_changed)
         self.controller_window = ControllerWindow(voice_client)
         self.client_window = ClientWindow(voice_client, self.fsuipc_client)
         self.windows.addWidget(QWidget())
@@ -143,7 +143,7 @@ class ConnectWindow(QWidget, Ui_ConnectWindow):
             self._connected = True
             self.signals.broadcast_message.emit(WebSocketMessage(VoiceConnectedState(True)))
             self.label_callsign_v.setText(self.voice_client.client_info.callsign)
-            self.log_message("Network", "INFO", "成功连接至服务器")
+            self.log_message("Network", "INFO", f"身份认证通过, 欢迎您, {self.voice_client.client_info.cid:04}")
             if self.voice_client.client_info.is_atc:
                 self.windows.setCurrentIndex(1)
             else:

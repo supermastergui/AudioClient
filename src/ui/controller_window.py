@@ -1,17 +1,13 @@
 #  Copyright (c) 2025-2026 Half_nothing
 #  SPDX-License-Identifier: MIT
 
-from re import compile
-
 from PySide6.QtWidgets import QWidget
 
 from src.core import VoiceClient
 from src.model import ConnectionState
-from src.utils import clear_error
+from src.utils import clear_error, show_error
 from .form import Ui_ControllerWindow
 from src.core.voice.transmitter import Transmitter
-
-frequency_pattern = compile(r"\d{1,3}\.\d{1,3}")
 
 
 class ControllerWindow(QWidget, Ui_ControllerWindow):
@@ -32,85 +28,105 @@ class ControllerWindow(QWidget, Ui_ControllerWindow):
             lambda x: self.label_current_freq_v.setText(f"{x / 1000:.3f}" if x != 0 else "---.---")
         )
         self._frequency = -1
-        self.line_edit_freq.textChanged.connect(self.decode_frequency)
+        self.line_edit_freq.textEdited.connect(self.decode_frequency)
 
-        self.transmitters = [
-            Transmitter(0, 0),
-            Transmitter(122800, 1),
-            Transmitter(121500, 2),
-            Transmitter(1, 3),
-        ]
+        self._main_transmitter = Transmitter(0, 0)
+        self._unicom_transmitter = Transmitter(122800, 1)
+        self._emer_transmitter = Transmitter(121500, 2)
+        self._custom_transmitter = Transmitter(0, 3)
 
     def decode_frequency(self, text: str):
-        if frequency_pattern.match(text) is not None:
-            self.button_freq_rx.setEnabled(True)
-            self.button_freq_tx.setEnabled(True)
-            self._frequency = int(float(text) * 1000)
-            self.transmitters[3].frequency = self._frequency
-            self.voice_client.update_transmitter(self.transmitters[3])
-        else:
+        frequency = int(float(text) * 1000)
+        if frequency < 3000 or frequency > 200000:
+            show_error(self.line_edit_freq)
             self._frequency = -1
             self.button_freq_rx.active = False
             self.button_freq_tx.active = False
             self.button_freq_rx.setEnabled(False)
             self.button_freq_tx.setEnabled(False)
-            self.voice_client.update_transmitter(1, 122800, False)
+            return
+        clear_error(self.line_edit_freq)
+        self.button_freq_rx.setEnabled(True)
+        self.button_freq_tx.setEnabled(True)
+        self._frequency = frequency
+        self._custom_transmitter.frequency = self._frequency
+        self.voice_client.update_transmitter(self._custom_transmitter)
 
     def freq_tx_click(self):
-        clear_error(self.line_edit_freq)
         self.button_emer_freq_tx.active = False
         self.button_main_freq_tx.active = False
         self.button_unicom_freq_tx.active = False
-        if self.button_freq_tx.active:
-            self.voice_client.update_transmitter(3, self._frequency, self.button_freq_rx.active)
+        self._custom_transmitter.send_flag = self.button_freq_tx.active
+        self.voice_client.update_transmitter(self._custom_transmitter)
 
     def freq_rx_click(self):
-        self.transmitters[3].receive_flag = self.button_freq_rx.active
+        self._custom_transmitter.receive_flag = self.button_freq_rx.active
+        self.voice_client.update_transmitter(self._custom_transmitter)
 
     def main_freq_tx_click(self):
         self.button_freq_tx.active = False
         self.button_emer_freq_tx.active = False
         self.button_unicom_freq_tx.active = False
-        if self.button_main_freq_tx.active:
-            self.voice_client.update_transmitter(0, self.voice_client.client_info.main_frequency,
-                                                 self.button_main_freq_rx.active)
+        self._main_transmitter.send_flag = self.button_main_freq_tx.active
+        self.voice_client.update_transmitter(self._main_transmitter)
 
     def main_freq_rx_click(self):
-        self.transmitters[0].receive_flag = self.button_main_freq_rx.active
+        self._main_transmitter.receive_flag = self.button_main_freq_rx.active
+        self.voice_client.update_transmitter(self._main_transmitter)
 
     def unicom_freq_tx_click(self):
         self.button_freq_tx.active = False
         self.button_emer_freq_tx.active = False
         self.button_main_freq_tx.active = False
-        if self.button_unicom_freq_tx.active:
-            self.voice_client.update_transmitter(1, 122800, self.button_unicom_freq_rx.active)
+        self._unicom_transmitter.send_flag = self.button_unicom_freq_tx.active
+        self.voice_client.update_transmitter(self._unicom_transmitter)
 
     def unicom_freq_rx_click(self):
-        self.transmitters[1].receive_flag = self.button_unicom_freq_rx.active
+        self._unicom_transmitter.receive_flag = self.button_unicom_freq_rx.active
+        self.voice_client.update_transmitter(self._unicom_transmitter)
 
     def emer_freq_tx_click(self):
         self.button_freq_tx.active = False
         self.button_main_freq_tx.active = False
         self.button_unicom_freq_tx.active = False
-        if self.button_emer_freq_tx.active:
-            self.voice_client.update_transmitter(2, 121500, self.button_emer_freq_rx.active)
+        self._emer_transmitter.send_flag = self.button_emer_freq_tx.active
+        self.voice_client.update_transmitter(self._emer_transmitter)
 
     def emer_freq_rx_click(self):
-        self.transmitters[2].receive_flag = self.button_emer_freq_rx.active
+        self._emer_transmitter.receive_flag = self.button_emer_freq_rx.active
+        self.voice_client.update_transmitter(self._emer_transmitter)
+
+    def clear(self):
+        self.label_main_freq_v.setText("---.---")
+
+        self._main_transmitter.clear()
+        self._unicom_transmitter.clear()
+        self._emer_transmitter.clear()
+        self._custom_transmitter.clear()
+
+        self.button_freq_tx.active = False
+        self.button_main_freq_tx.active = False
+        self.button_unicom_freq_tx.active = False
+        self.button_emer_freq_tx.active = False
+
+        self.button_main_freq_rx.active = False
+        self.button_unicom_freq_rx.active = False
+        self.button_emer_freq_rx.active = False
+        self.button_freq_rx.active = False
+
+        self.button_freq_tx.setEnabled(False)
+        self.button_freq_rx.setEnabled(False)
 
     def connect_state_changed(self, state: ConnectionState):
         if not self.voice_client.client_info.is_atc:
             return
         if state == ConnectionState.READY:
-            self.transmitters[0].frequency = self.voice_client.client_info.main_frequency
-            self.voice_client.add_transmitter(self.transmitters[0], False, True)
-            self.voice_client.add_transmitter(self.transmitters[1], False, True)
-            self.voice_client.add_transmitter(self.transmitters[2], False, True)
-            self.voice_client.add_transmitter(self.transmitters[3], False, False)
+            self.clear()
+            self._main_transmitter.frequency = self.voice_client.client_info.main_frequency
+            self.voice_client.add_transmitter(self._main_transmitter)
+            self.voice_client.add_transmitter(self._unicom_transmitter)
+            self.voice_client.add_transmitter(self._emer_transmitter)
+            self.voice_client.add_transmitter(self._custom_transmitter)
             self.label_main_freq_v.setText(f"{self.voice_client.client_info.main_frequency / 1000:.3f}")
-            self.button_main_freq_rx.active = True
-            self.button_unicom_freq_rx.active = True
-            self.button_emer_freq_rx.active = True
-            self.button_freq_rx.active = False
-            self.button_freq_rx.setEnabled(False)
-            self.button_freq_tx.setEnabled(False)
+        elif state == ConnectionState.DISCONNECTED:
+            self.clear()

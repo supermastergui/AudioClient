@@ -12,6 +12,10 @@ from src.constants import app_name, app_version, organization_name, organization
 from src.utils import QSSLoader
 
 
+def log_message(source: str, level: str, content: str):
+    logger.log(level, f"{source} > {content}")
+
+
 def main() -> None:
     from src.utils.logger import logger_init
     logger_init()
@@ -46,7 +50,9 @@ def main() -> None:
     logger.trace("Creating main window")
     from src.ui.main_window import MainWindow
     from src.signal import AudioClientSignals, MouseSignals, KeyBoardSignals
-    main_window = MainWindow(AudioClientSignals(), MouseSignals(), KeyBoardSignals())
+    main_signals = AudioClientSignals()
+    main_signals.log_message.connect(log_message)
+    main_window = MainWindow(main_signals, MouseSignals(), KeyBoardSignals())
     logger.trace(f"Create main window cost {time() - last_time:.6f}s")
 
     logger.info(f"Startup completed in {time() - start_time:.6f}s")
@@ -54,6 +60,7 @@ def main() -> None:
     main_window.show()
     exit_code = app.exec()
     resource_rc.qCleanupResources()
+    main_window.voice_client.shutdown()
     sys.exit(exit_code)
 
 

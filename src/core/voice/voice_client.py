@@ -7,13 +7,12 @@ from typing import Union
 from PySide6.QtCore import QObject, QTimer
 from loguru import logger
 
-from src.model.voice_models import ConnectionState, ControlMessage, MessageType, VoicePacket, VoicePacketBuilder
-from src.signal import AudioClientSignals
-from src.core.voice.audio_handler import AudioHandler
-from src.core.client_info import ClientInfo
-from src.core.network_handler import NetworkHandler
-from src.core.voice.transmitter import Transmitter
+from .network_handler import NetworkHandler
+from .audio_handler import AudioHandler
+from .transmitter import Transmitter
 from src.constants import default_frame_time, default_frame_time_s
+from src.signal import AudioClientSignals
+from src.model import ConnectionState, ControlMessage, MessageType, VoicePacket, VoicePacketBuilder, ClientInfo
 
 
 # 语音客户端
@@ -21,13 +20,15 @@ class VoiceClient(QObject):
     def __init__(self, client_info: ClientInfo, signals: AudioClientSignals):
         super().__init__()
 
-        self._connection_state = ConnectionState.DISCONNECTED
-        self._network = NetworkHandler(signals)
-        self._audio = AudioHandler(signals)
         self.signals = signals
         self.client_info = client_info
-        self.transmitters: dict[int, Transmitter] = {}
         self.receiving: dict[str, float] = {}
+
+        self._connection_state = ConnectionState.DISCONNECTED
+        self._network = NetworkHandler(signals, client_info)
+        self._audio = AudioHandler(signals)
+        self._transmitters: dict[int, Transmitter] = {}
+        self._last_receive: dict[int, tuple[str, float]] = {}
         self._current_transmitter = -1
 
         self._audio.on_encoded_audio = self._send_voice_data
@@ -50,17 +51,6 @@ class VoiceClient(QObject):
         clean_timer.timeout.connect(receiving_clean_handler)
         clean_timer.setInterval(default_frame_time)
         clean_timer.start()
-
-        def heartbeat_send_handler():
-            if not self.client_ready:
-                return
-            message = ControlMessage(type=MessageType.PING, cid=self.client_info.cid,
-                                     callsign=self.client_info.callsign, data=str(int(time())))
-            self._network.send_control_message(message)
-
-        self._heartbeat_timer = QTimer()
-        self._heartbeat_timer.timeout.connect(heartbeat_send_handler)
-        self._heartbeat_timer.setInterval(15000)
 
     def _log_message(self, level: str, message: str):
         self.signals.log_message.emit("VoiceClient", level, message)
@@ -85,28 +75,28 @@ class VoiceClient(QObject):
         self._network.disconnect_from_server()
         self._current_transmitter = -1
         self._audio.cleanup()
-        self.transmitters.clear()
+        self._transmitters.clear()
         self.client_info.clear()
 
     def add_transmitter(self, transmitter: Transmitter):
-        if transmitter.id is None:
-            transmitter.id = len(self.transmitters.keys())
-        self.transmitters[transmitter.id] = transmitter
-        self.update_transmitter(transmitter)
+        self._transmitters[transmitter.id] = transmitter
         self._audio.add_transmitter(transmitter)
+        if transmitter.frequency == 0:
+            return
+        self.update_transmitter(transmitter)
         self._init_transmitters(transmitter)
 
     def remove_transmitter(self, transmitter_id: int):
-        del self.transmitters[transmitter_id]
+        del self._transmitters[transmitter_id]
 
     def update_transmitter(self, transmitter: Union[Transmitter, int]):
         if not self.client_ready:
             return
 
         if isinstance(transmitter, int):
-            if transmitter >= len(self.transmitters):
+            if transmitter >= len(self._transmitters):
                 raise ValueError("Invalid transmitter id")
-            transmitter = self.transmitters[transmitter]
+            transmitter = self._transmitters[transmitter]
         elif not isinstance(transmitter, Transmitter):
             raise ValueError("Invalid transmitter")
 
@@ -125,7 +115,7 @@ class VoiceClient(QObject):
             transmitter=transmitter_id,
             data=f"{frequency}:{'1' if rx else '0'}"
         )
-        self._log_message("INFO", f"Switch transmitter {transmitter} to {frequency / 1000:.3f}mHz receive flag {rx}")
+        self._log_message("INFO", f"Switch transmitter {transmitter_id} to {frequency / 1000:.3f}mHz receive flag {rx}")
         self._network.send_control_message(message)
 
     def send_text_message(self, target: str, message: str):
@@ -157,7 +147,7 @@ class VoiceClient(QObject):
         if not self.client_ready or self._current_transmitter == -1:
             return
 
-        transmitter = self.transmitters.get(self._current_transmitter, None)
+        transmitter = self._transmitters.get(self._current_transmitter, None)
         if transmitter is None:
             return
 
@@ -180,8 +170,6 @@ class VoiceClient(QObject):
                 if "Welcome" in message.data:
                     data = message.data.split(":")
                     self.client_info.callsign = data[1]
-                    self._log_message("INFO", f"Starting heartbeat timer")
-                    self._heartbeat_timer.start()
                     self._audio.start()
                     if len(data) == 4:
                         self.client_info.main_frequency = int(data[-1])
@@ -189,18 +177,33 @@ class VoiceClient(QObject):
                     self._set_connection_state(ConnectionState.READY)
                     self._log_message("INFO", "Identity verification passed")
         elif message.type == MessageType.DISCONNECT:
-            self._heartbeat_timer.stop()
-            self._audio.cleanup()
-            self._network.disconnect_from_server()
+            self.clear()
             self._set_connection_state(ConnectionState.DISCONNECTED)
 
     def _handle_voice_packet(self, packet: VoicePacket):
         self.receiving[packet.callsign] = time()
-        self._audio.play_encoded_audio(packet.transmitter, packet.data)
+        conflict = False
+        last_receive = self._last_receive.get(packet.frequency, None)
+        if (last_receive is not None
+                and time() - last_receive[1] < default_frame_time_s * 5
+                and last_receive[0] != packet.callsign):
+            # 5个音频帧内收到了多个发送者发来的数据, 则判定为冲突
+            conflict = True
+        else:
+            self._last_receive[packet.frequency] = (packet.callsign, time())
+        self._audio.play_encoded_audio(packet.transmitter, packet.data, conflict)
 
     def _handle_connection_status(self, connected: bool):
         if connected:
             self._set_connection_state(ConnectionState.CONNECTED)
         else:
-            self._heartbeat_timer.stop()
             self._set_connection_state(ConnectionState.DISCONNECTED)
+
+    def clear(self):
+        self._transmitters.clear()
+        self._audio.cleanup()
+        self._network.disconnect_from_server()
+
+    def shutdown(self):
+        self._network.shutdown()
+        self._audio.shutdown()

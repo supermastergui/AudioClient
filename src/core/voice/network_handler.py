@@ -1,22 +1,22 @@
 #  Copyright (c) 2025-2026 Half_nothing
 #  SPDX-License-Identifier: MIT
-
-from json import dumps, loads
+from time import time
 from socket import AF_INET, SOCK_DGRAM, SOCK_STREAM, socket
 from struct import unpack
 from threading import Thread
 from typing import Optional
 
-from PySide6.QtCore import QObject
+from PySide6.QtCore import QObject, QTimer
 from loguru import logger
+from pydantic import ValidationError
 
-from src.model.voice_models import ControlMessage, MessageType, VoicePacket
+from src.model import ClientInfo, ControlMessage, MessageType, VoicePacket
 from src.signal import AudioClientSignals
 
 
 # 网络处理器
 class NetworkHandler(QObject):
-    def __init__(self, signals: AudioClientSignals):
+    def __init__(self, signals: AudioClientSignals, client_info: ClientInfo):
         super().__init__()
 
         # 双协议, TCP用于传输信令, UDP用于传输音频数据
@@ -25,13 +25,28 @@ class NetworkHandler(QObject):
         self._server_address: Optional[tuple] = None
 
         self._signals = signals
+        self._client_info = client_info
 
         self._tcp_running = False
         self._udp_running = False
         self._connected = False
 
+        self._heartbeat_timer = QTimer()
+        self._heartbeat_timer.timeout.connect(self._heartbeat_send_handler)
+        self._heartbeat_timer.setInterval(15000)
+
     def _log_message(self, level: str, message: str):
         self._signals.log_message.emit("Network", level, message)
+
+    def _show_log_message(self, level: str, message: str):
+        self._signals.show_log_message.emit("Network", level, message)
+
+    def _heartbeat_send_handler(self):
+        if not self._connected:
+            return
+        message = ControlMessage(type=MessageType.PING, cid=self._client_info.cid,
+                                 callsign=self._client_info.callsign, data=str(int(time())))
+        self.send_control_message(message)
 
     # 连接到服务器
     def connect_to_server(self, host: str, tcp_port: int, udp_port: int, jwt_token: str):
@@ -59,6 +74,8 @@ class NetworkHandler(QObject):
             self._connected = True
             self._signals.socket_connection_state.emit(True)
             logger.info("Connected to voice server")
+            self._show_log_message("INFO", "连接服务器成功")
+            self._heartbeat_timer.start()
         except Exception as e:
             logger.error(f"Failed to connect to server: {e}")
             self._log_message("ERROR", f"Failed to connect to server")
@@ -68,7 +85,7 @@ class NetworkHandler(QObject):
     # 断开连接
     def disconnect_from_server(self):
         # 发送断开连接消息
-        self.send_control_message(ControlMessage(MessageType.DISCONNECT))
+        self.send_control_message(ControlMessage(type=MessageType.DISCONNECT, cid=self._client_info.cid))
         self.cleanup()
         self._signals.socket_connection_state.emit(False)
         self._log_message("INFO", f"Disconnected from voice server")
@@ -79,11 +96,13 @@ class NetworkHandler(QObject):
         if not self._tcp_socket:
             return
         try:
-            data = dumps(message.to_dict()).encode()
-            self._tcp_socket.send(data + b'\n')
+            self._tcp_socket.send(message.model_dump_json().encode(encoding="utf-8") + b'\n')
+        except UnicodeEncodeError as e:
+            logger.error(f"Failed to send control message, encoding error: {e}")
+        except WindowsError as e:
+            logger.error(f"Failed to send control message, windows error: {e}")
         except Exception as e:
-            logger.error(f"Failed to send control message: {e}")
-            self._signals.error_occurred.emit(f"发送消息失败: {e}")
+            logger.error(f"Failed to send control message, unknown error: {e}")
 
     # 发送音频数据
     def send_voice_packet(self, packet: bytes):
@@ -103,7 +122,7 @@ class NetworkHandler(QObject):
                 data = self._tcp_socket.recv(4096)
                 if not data:
                     break
-                logger.trace(f"TCP > receive from server: {data}")
+                logger.trace(f"TCP > receive from server: {data.decode('utf-8', 'ignore').replace('\n', '')}")
                 data_buffer += data
                 if b'\n' in data_buffer:
                     data, data_buffer = data_buffer.split(b'\n', 1)
@@ -131,15 +150,9 @@ class NetworkHandler(QObject):
     # 处理信令
     def _process_control_message(self, data: bytes):
         try:
-            message_dict = loads(data)
-            message = ControlMessage(
-                type=MessageType(message_dict.get('type', 'pong')),
-                cid=message_dict.get('cid', 0),
-                callsign=message_dict.get('callsign', ''),
-                transmitter=message_dict.get('transmitter', 0),
-                data=message_dict.get('data', '')
-            )
-            self._signals.control_message_received.emit(message)
+            self._signals.control_message_received.emit(ControlMessage.model_validate_json(data))
+        except ValidationError as e:
+            logger.error(f"Failed to parse control message: {e}")
         except Exception as e:
             logger.error(f"Failed to process control message: {e}")
 
@@ -168,6 +181,8 @@ class NetworkHandler(QObject):
         self._udp_running = False
         self._connected = False
 
+        self._heartbeat_timer.stop()
+
         if self._tcp_socket:
             try:
                 self._tcp_socket.close()
@@ -181,3 +196,6 @@ class NetworkHandler(QObject):
             except:
                 pass
             self._udp_socket = None
+
+    def shutdown(self):
+        self.cleanup()

@@ -80,21 +80,23 @@ class AudioHandler:
 
     def add_transmitter(self, transmitter: Transmitter):
         self._output_streams[transmitter.id] = OutputAudioSteam(self._audio, self._decoder)
+        self._output_streams[transmitter.id].start(self._output_args)
 
-    def play_encoded_audio(self, transmitter_id: int, encoded_data: bytes):
+    def play_encoded_audio(self, transmitter_id: int, encoded_data: bytes, conflict: bool = False):
         stream = self._output_streams.get(transmitter_id, None)
         if stream is None:
             return
-        stream.play_encoded_audio(encoded_data)
+        stream.play_encoded_audio(encoded_data, conflict)
 
     def start(self):
         self._input_stream.start(self._input_args)
-        for stream in self._output_streams.values():
-            stream.start(self._output_args)
 
     def cleanup(self):
         self._input_stream.stop()
         for stream in self._output_streams.values():
             stream.stop()
-        self._audio.terminate()
         self._output_streams.clear()
+
+    def shutdown(self):
+        self.cleanup()
+        self._audio.terminate()

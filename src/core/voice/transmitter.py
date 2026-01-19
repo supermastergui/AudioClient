@@ -1,26 +1,18 @@
 #  Copyright (c) 2025-2026 Half_nothing
 #  SPDX-License-Identifier: MIT
 
-from typing import Optional
-
 
 # 无线电台
 class Transmitter:
-    def __init__(self, frequency: int = 0, transmitter_id: Optional[int] = None):
+    def __init__(self, frequency: int, transmitter_id: int, *, tx: bool = False, rx: bool = False):
         self._transmitter_id = transmitter_id
         self._transmitter_frequency = frequency
-        self._send_flag = False
-        self._receive_flag = False
+        self._send_flag = tx
+        self._receive_flag = rx
 
     @property
     def id(self) -> int:
         return self._transmitter_id
-
-    @id.setter
-    def id(self, transmitter_id: int):
-        if transmitter_id is not None:
-            raise ValueError("transmitter id cannot be set twice")
-        self._transmitter_id = transmitter_id
 
     @property
     def frequency(self) -> int:
@@ -45,3 +37,7 @@ class Transmitter:
     @send_flag.setter
     def send_flag(self, send_flag: bool):
         self._send_flag = send_flag
+
+    def clear(self):
+        self._send_flag = False
+        self._receive_flag = False

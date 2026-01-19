@@ -7,11 +7,13 @@ from typing import Callable, Optional
 
 from loguru import logger
 from numpy import float32, frombuffer, int16, zeros
+from numpy.typing import NDArray
 from pyaudio import PyAudio, Stream, paContinue, paFloat32, paInt16
 from soxr import resample  # type: ignore
 
 from src.constants import default_sample_rate, opus_default_sample_rate
 from .opus import OpusDecoder, OpusEncoder, SteamArgs
+from .tone_generator import ToneGenerator
 
 
 class AudioStream(ABC):
@@ -110,35 +112,59 @@ class OutputAudioSteam(AudioStream):
     def __init__(self, audio: PyAudio, decoder: OpusDecoder):
         super().__init__(audio)
         self._decoder = decoder
-        self._queue = Queue()
+        self._queue: Queue[bytes] = Queue()
+        self._conflict_queue: Queue[NDArray[float32]] = Queue()
+        self._generator = ToneGenerator()
+        self._frame_size = 0
 
-    def play_encoded_audio(self, encoded_data: bytes):
+    def play_encoded_audio(self, encoded_data: bytes, conflict: bool = False):
+        if conflict:
+            try:
+                self._conflict_queue.put_nowait(self._generator.generate_frame(self._frame_size))
+            except Full:
+                logger.warning("Output conflict queue full, dropping audio packet")
+            return
         try:
             self._queue.put_nowait(encoded_data)
         except Full:
             logger.warning("Output queue full, dropping audio packet")
 
-    def _callback(self, _, frame_count: int, __, ___):
+    def _get_conflict_audio(self) -> tuple[NDArray[float32], bool]:
+        try:
+            return self._conflict_queue.get_nowait(), True
+        except Empty:
+            return zeros(0, dtype=float32), False
+
+    def _get_audio(self, frame_count: int) -> tuple[NDArray[float32], bool]:
         try:
             encoded_data = self._queue.get_nowait()
             audio_data = self._decoder.decode(encoded_data)
-            if audio_data is not None:
-                # 重采样解码出来的音频数据
-                # OPUS编码的音频采样率通常为48000Hz
-                # 音频输出的采样率通常为44100Hz
-                resampled_audio = resample(audio_data, opus_default_sample_rate, self._sample_rate)
-                if resampled_audio.size != frame_count:
-                    logger.warning(f"Resampling audio with {frame_count} frames")
-                output_data = resampled_audio.astype(float32).tobytes()
-                return output_data, paContinue
+            if audio_data is None:
+                return zeros(0, dtype=float32), False
+            # 重采样解码出来的音频数据
+            # OPUS编码的音频采样率通常为48000Hz
+            # 音频输出的采样率通常为44100Hz
+            resampled_audio = resample(audio_data, opus_default_sample_rate, self._sample_rate)
+            if resampled_audio.size != frame_count:
+                logger.warning(f"Resampling audio with {frame_count} frames")
+            return resampled_audio.astype(float32), True
         except Empty:
-            pass
-        silence = zeros(frame_count, dtype=float32).tobytes()
-        return silence, paContinue
+            return zeros(0, dtype=float32), False
+
+    def _callback(self, _, frame_count: int, __, ___) -> tuple[bytes, int]:
+        data, success = self._get_conflict_audio()
+        if success:
+            return data.tobytes(), paContinue
+        data, success = self._get_audio(frame_count)
+        if success:
+            return data.tobytes(), paContinue
+        return zeros(frame_count, dtype=float32).tobytes(), paContinue
 
     def start(self, args: SteamArgs):
         if self._active:
             return
+        self._generator.update_arguments(args.sample_rate)
+        self._frame_size = args.frame_size
         self._sample_rate = args.sample_rate
         try:
             self._stream = self._audio.open(
