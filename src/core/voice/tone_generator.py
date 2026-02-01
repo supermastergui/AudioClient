@@ -1,7 +1,7 @@
 #  Copyright (c) 2026 Half_nothing
 #  SPDX-License-Identifier: MIT
 
-from numpy import pi, sin, float32, ndarray, zeros, arange
+from numpy import pi, sin, float32, zeros, arange
 from numpy.typing import NDArray
 
 

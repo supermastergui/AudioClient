@@ -9,6 +9,7 @@ from PySide6.QtWidgets import QApplication, QStyleFactory
 from loguru import logger
 
 from src.constants import app_name, app_version, organization_name, organization_website
+from src.ui.sub_window import SubWindow
 from src.utils import QSSLoader
 
 
@@ -21,7 +22,7 @@ def main() -> None:
     logger_init()
 
     try:
-        from opuslib.api import libopus
+        from opuslib.api import libopus  # type: ignore
     except FileNotFoundError:
         logger.critical("can't found opuslib")
     except OSError:

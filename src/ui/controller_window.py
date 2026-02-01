@@ -1,6 +1,6 @@
 #  Copyright (c) 2025-2026 Half_nothing
 #  SPDX-License-Identifier: MIT
-
+from PySide6.QtCore import Signal
 from PySide6.QtWidgets import QWidget
 
 from src.core import VoiceClient
@@ -8,10 +8,12 @@ from src.model import ConnectionState
 from src.utils import clear_error, show_error
 from .form import Ui_ControllerWindow
 from src.core.voice.transmitter import Transmitter
+from .sub_window import SubWindow
+from ..signal.sub_window_signals import SubWindowSignals
 
 
 class ControllerWindow(QWidget, Ui_ControllerWindow):
-    def __init__(self, voice_client: VoiceClient):
+    def __init__(self, voice_client: VoiceClient, signals: SubWindowSignals):
         super().__init__()
         self.setupUi(self)
         self.voice_client = voice_client
@@ -24,9 +26,7 @@ class ControllerWindow(QWidget, Ui_ControllerWindow):
         self.button_freq_tx.clicked.connect(self.freq_tx_click)
         self.button_freq_rx.clicked.connect(self.freq_rx_click)
         self.voice_client.signals.connection_state_changed.connect(self.connect_state_changed)
-        self.voice_client.signals.update_current_frequency.connect(
-            lambda x: self.label_current_freq_v.setText(f"{x / 1000:.3f}" if x != 0 else "---.---")
-        )
+        self.voice_client.signals.update_current_frequency.connect(self.set_current_frequency)
         self._frequency = -1
         self.line_edit_freq.editingFinished.connect(self.decode_frequency)
 
@@ -34,6 +34,18 @@ class ControllerWindow(QWidget, Ui_ControllerWindow):
         self._unicom_transmitter = Transmitter(122800, 1)
         self._emer_transmitter = Transmitter(121500, 2)
         self._custom_transmitter = Transmitter(0, 3)
+
+        self.sub_window = SubWindow(signals)
+        self.signals = signals
+        self.button_small_window.clicked.connect(self.small_window)
+
+    def small_window(self):
+        self.signals.show_small_window.emit()
+
+    def set_current_frequency(self, frequency: int):
+        freq = f"{frequency / 1000:.3f}" if frequency != 0 else "---.---"
+        self.label_current_freq_v.setText(freq)
+        self.sub_window.label_current_freq_v.setText(freq)
 
     def decode_frequency(self):
         frequency = int(float(self.line_edit_freq.text()) * 1000)

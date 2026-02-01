@@ -4,27 +4,30 @@
 from datetime import datetime
 from os import getcwd
 from os.path import join
+from pathlib import Path
 from sys import platform
 from threading import Thread
-from time import sleep, time
+from time import time
 
 from PySide6.QtCore import QTimer, Signal
 from PySide6.QtWidgets import QMessageBox, QWidget
 from loguru import logger
 
+from src.config import config
+from src.constants import default_frame_time, default_frame_time_s
+from src.core import FSUIPCClient, VoiceClient
+from src.model import ConnectionState, VoicePacket, WebSocketMessage
+from src.signal import AudioClientSignals
 from .client_window import ClientWindow
 from .controller_window import ControllerWindow
 from .form import Ui_ConnectWindow
-from src.config import config
-from src.core import VoiceClient, FSUIPCClient
-from src.model import ConnectionState, RxBegin, RxEnd, VoiceConnectedState, VoicePacket, WebSocketMessage
-from src.signal import AudioClientSignals
-from src.constants import default_frame_time, default_frame_time_s
+from ..signal.sub_window_signals import SubWindowSignals
 
 
 class ConnectWindow(QWidget, Ui_ConnectWindow):
     fsuipc_client_connected = Signal()
     fsuipc_client_connect_fail = Signal()
+    sub_window_signals = SubWindowSignals()
 
     def __init__(self, voice_client: VoiceClient, signals: AudioClientSignals):
         super().__init__()
@@ -40,7 +43,7 @@ class ConnectWindow(QWidget, Ui_ConnectWindow):
             else:
                 raise OSError("unknown platform")
 
-            self.fsuipc_client = FSUIPCClient(lib_location)
+            self.fsuipc_client = FSUIPCClient(Path(lib_location))
         except FileNotFoundError:
             logger.error("Cannot find libfsuipc")
             QMessageBox.critical(self, "Cannot load libfsuipc",
@@ -57,7 +60,7 @@ class ConnectWindow(QWidget, Ui_ConnectWindow):
         self.button_exit.clicked.connect(lambda: signals.logout_request.emit())
         signals.error_occurred.connect(self.handle_connect_error)
         signals.connection_state_changed.connect(self.connect_state_changed)
-        self.controller_window = ControllerWindow(voice_client)
+        self.controller_window = ControllerWindow(voice_client, self.sub_window_signals)
         self.client_window = ClientWindow(voice_client, self.fsuipc_client)
         self.windows.addWidget(QWidget())
         self.windows.addWidget(self.controller_window)
@@ -88,35 +91,48 @@ class ConnectWindow(QWidget, Ui_ConnectWindow):
             diff = time() - self.last_data_receive
             if diff > default_frame_time_s * 4:
                 self.button_rx.set_active(False)
-                self.signals.broadcast_message.emit(WebSocketMessage(RxEnd(
-                    [item for item in self.voice_client.receiving.keys()],
-                    self.label_rx_callsign_v.text(),
-                    int(float(self.label_rx_freq_v.text()) * 1000000)
-                )))
+                self.controller_window.sub_window.button_rx.set_active(False)
+                self.signals.broadcast_message.emit(
+                    WebSocketMessage.rx_end(
+                        [item for item in self.voice_client.receiving.keys()],
+                        self.label_rx_callsign_v.text(),
+                        int(float(self.label_rx_freq_v.text()) * 1000000)
+                    )
+                )
 
     def check_tx_timeout(self):
         if self.button_tx.is_active:
             if time() - self.last_data_send > default_frame_time_s:
                 self.button_tx.set_active(False)
+                self.controller_window.sub_window.button_tx.set_active(False)
 
     def tx_send(self) -> None:
         if self.voice_client.connection_state != ConnectionState.READY:
             self.button_tx.set_active(False)
+            self.controller_window.sub_window.button_tx.set_active(False)
             return
         self.last_data_send = time()
         self.button_tx.set_active(True)
+        self.controller_window.sub_window.button_tx.set_active(True)
 
     def rx_receive(self, voice: VoicePacket) -> None:
         if self.voice_client.connection_state != ConnectionState.READY:
             self.button_rx.set_active(False)
+            self.controller_window.sub_window.button_rx.set_active(False)
             return
         if not self.button_rx.is_active:
             self.signals.broadcast_message.emit(
-                WebSocketMessage(RxBegin([item for item in self.voice_client.receiving.keys()], voice.callsign,
-                                         voice.frequency * 1000)))
+                WebSocketMessage.rx_begin(
+                    [item for item in self.voice_client.receiving.keys()],
+                    voice.callsign,
+                    voice.frequency * 1000
+                )
+            )
         self.last_data_receive = time()
         self.button_rx.set_active(True)
+        self.controller_window.sub_window.button_rx.set_active(True)
         self.label_rx_callsign_v.setText(voice.callsign)
+        self.controller_window.sub_window.label_rx_callsign_v.setText(voice.callsign)
         self.label_rx_freq_v.setText(f"{voice.frequency / 1000:.3f}")
 
     def login_success(self):
@@ -141,7 +157,7 @@ class ConnectWindow(QWidget, Ui_ConnectWindow):
         if state == ConnectionState.READY:
             self.button_connect.setText("断开连接")
             self._connected = True
-            self.signals.broadcast_message.emit(WebSocketMessage(VoiceConnectedState(True)))
+            self.signals.broadcast_message.emit(WebSocketMessage.voice_connected_state(True))
             self.label_callsign_v.setText(self.voice_client.client_info.callsign)
             self.log_message("Network", "INFO", f"身份认证通过, 欢迎您, {self.voice_client.client_info.cid:04}")
             if self.voice_client.client_info.is_atc:
@@ -150,7 +166,7 @@ class ConnectWindow(QWidget, Ui_ConnectWindow):
                 Thread(target=self.connect_to_simulator, daemon=True).start()
         elif state == ConnectionState.DISCONNECTED:
             self._connected = False
-            self.signals.broadcast_message.emit(WebSocketMessage(VoiceConnectedState(False)))
+            self.signals.broadcast_message.emit(WebSocketMessage.voice_connected_state(False))
             self.button_connect.setText("连接服务器")
             self.log_message("Network", "INFO", "断开连接")
             self.label_callsign_v.setText("----")
@@ -166,24 +182,24 @@ class ConnectWindow(QWidget, Ui_ConnectWindow):
         QMessageBox.critical(self, "无法连接到模拟器", "无法连接到模拟器, 请检查FSUIPC/XPUIPC是否正确安装")
 
     def connect_to_simulator(self):
-        retry = 0
-        max_retry = 12
-        retry_delay = 5
-        while retry < max_retry:
-            res = self.fsuipc_client.open_fsuipc_client()
-            if res.requestStatus:
-                logger.success("FSUIPC connection established")
-                self.log_message("FSUIPC", "INFO", "FSUIPC连接成功")
-                break
-            logger.error(f"FSUIPC connection failed, {retry + 1}/{max_retry} times")
-            self.log_message("FSUIPC", "ERROR", f"FSUIPC连接失败, 第 {retry + 1}/{max_retry} 次尝试")
-            retry += 1
-            sleep(retry_delay)
-        if retry == max_retry:
-            logger.error(f"FSUIPC connection failed")
-            self.log_message("FSUIPC", "ERROR", "FSUIPC连接失败")
-            self.fsuipc_client_connect_fail.emit()
-            return
+        # retry = 0
+        # max_retry = 12
+        # retry_delay = 5
+        # while retry < max_retry:
+        #     res = self.fsuipc_client.open_fsuipc_client()
+        #     if res.requestStatus:
+        #         logger.success("FSUIPC connection established")
+        #         self.log_message("FSUIPC", "INFO", "FSUIPC连接成功")
+        #         break
+        #     logger.error(f"FSUIPC connection failed, {retry + 1}/{max_retry} times")
+        #     self.log_message("FSUIPC", "ERROR", f"FSUIPC连接失败, 第 {retry + 1}/{max_retry} 次尝试")
+        #     retry += 1
+        #     sleep(retry_delay)
+        # if retry == max_retry:
+        #     logger.error(f"FSUIPC connection failed")
+        #     self.log_message("FSUIPC", "ERROR", "FSUIPC连接失败")
+        #     self.fsuipc_client_connect_fail.emit()
+        #     return
         self.fsuipc_client_connected.emit()
 
     def handle_connect_error(self, message: str) -> None:

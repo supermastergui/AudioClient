@@ -101,6 +101,8 @@ class MainWindow(QMainWindow, Ui_MainWindow):
 
         self.connect_window = ConnectWindow(self.voice_client, self.signals)
         self.connect_window.setObjectName(u"connect")
+        self.connect_window.sub_window_signals.show_small_window.connect(self.hide)
+        self.connect_window.sub_window_signals.show_full_window.connect(self.show)
         self.windows.addWidget(self.connect_window)
 
         self.config = ConfigWindow(self.signals)

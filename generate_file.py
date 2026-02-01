@@ -43,7 +43,7 @@ def main() -> None:
 
     print("=" * 50)
     print("Processing resource.qrc file")
-    system(f"{rcc_file} {resource_file} -o {root / 'resource_rc.py'}")
+    system(f"{rcc_file} {resource_file} -o {root / "resource_rc.py"}")
     print("Processing resource.qrc file completed")
 
     ui_file_folder = root / "src" / "ui" / "form"

@@ -2,6 +2,9 @@
   <qresource prefix="icon">
     <file alias="logo">icon/Logo.png</file>
     <file alias="setting">icon/settings.svg</file>
+    <file alias="window">icon/window.svg</file>
+    <file alias="mute">icon/mute.svg</file>
+    <file alias="full">icon/full.svg</file>
   </qresource>
   <qresource prefix="style">
     <file>style/style.qss</file>

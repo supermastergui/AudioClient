@@ -27,7 +27,7 @@ class UserModel(BaseModel):
     tier2: bool
     under_monitor: bool
     under_solo: bool
-    solo_until: datetime
+    solo_until: Optional[datetime]
     total_atc_time: int
     total_pilot_time: int
     register_time: datetime

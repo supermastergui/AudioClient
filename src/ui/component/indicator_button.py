@@ -14,6 +14,6 @@ class IndicatorButton(QPushButton):
 
     def update_style(self):
         if self.is_active:
-            self.setStyleSheet("background-color: rgb(89, 189, 130)")
+            self.setStyleSheet("background-color: #7ed6df; color: #000000")
         else:
             self.setStyleSheet("")

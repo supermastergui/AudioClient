@@ -211,18 +211,20 @@ class ClientWindow(QWidget, Ui_ClientWindow):
         err_count = 0
         while not self.thread_exit.is_set():
             res = self.fsuipc_client.get_frequency()
-            if res.requestStatus:
+            if res.request_status:
                 self.update_com_info(res.frequency[0] // 1000,
                                      res.frequency[1] // 1000,
                                      res.frequency[2] // 1000,
                                      res.frequency[3] // 1000,
-                                     (res.frequencyFlag & 0x80) != 0x80,
-                                     (res.frequencyFlag & 0x40) != 0x40)
+                                     (res.frequency_flag & 0x80) != 0x80,
+                                     (res.frequency_flag & 0x40) != 0x40)
             else:
-                logger.error(f"Error while receiving frequency from FSUIPC: {res.errMessage}")
+                logger.error(f"Error while receiving frequency from FSUIPC: {res.err_message}")
                 err_count += 1
             if err_count >= 3:
                 logger.error(f"Too many error received from FSUIPC: {err_count}, disconnecting")
+                # TODO: 通知用户
+                break
             sleep(1)
 
     def _update_frequency(self, com1_freq: int, com2_freq: int):

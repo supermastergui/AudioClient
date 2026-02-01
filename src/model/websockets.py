@@ -1,83 +1,71 @@
 #  Copyright (c) 2025-2026 Half_nothing
 #  SPDX-License-Identifier: MIT
 
-from abc import ABC, abstractmethod
-from dataclasses import dataclass
-from typing import Generic, TypeVar
+from enum import Enum
+from typing import Union
+
+from pydantic import BaseModel
 
 
-class WebSocketMessageItem(ABC):
-    @abstractmethod
-    def to_dict(self) -> dict:
-        raise NotImplementedError
-
-    @classmethod
-    @abstractmethod
-    def get_type(cls) -> str:
-        raise NotImplementedError
+class BroadcastMessageType(Enum):
+    kVoiceConnectedState = "kVoiceConnectedState"
+    kStationStateUpdate = "kStationStateUpdate"
+    kRxBegin = "kRxBegin"
+    kRxEnd = "kRxEnd"
+    kTxBegin = "kTxBegin"
+    kTxEnd = "kTxEnd"
 
 
-T = TypeVar("T", bound=WebSocketMessageItem)
+class StationStateUpdate(BaseModel):
+    callsign: str
+    frequency: int
+    headset: bool
+    rx: bool
+    tx: bool
+    xc: bool
+    xca: bool
+    isAvailable: bool
+    isOutputMuted: bool
+    outputVolume: int
 
 
-class WebSocketMessage(Generic[T]):
-    type: str
-    value: T
-
-    def __init__(self, value: T):
-        self.type = value.get_type()
-        self.value = value
-
-    def to_dict(self) -> dict:
-        return {
-            "type": self.type,
-            "value": self.value.to_dict()
-        }
-
-
-@dataclass
-class VoiceConnectedState(WebSocketMessageItem):
+class VoiceConnectedState(BaseModel):
     connected: bool
 
-    def to_dict(self) -> dict:
-        return {'connected': self.connected}
 
-    @classmethod
-    def get_type(cls) -> str:
-        return "kVoiceConnectedState"
-
-
-@dataclass
-class RxBegin(WebSocketMessageItem):
+class RxBegin(BaseModel):
     activeTransmitters: list[str]
     callsign: str
     pFrequencyHz: int
 
-    def to_dict(self) -> dict:
-        return {
-            "activeTransmitters": self.activeTransmitters,
-            "callsign": self.callsign,
-            "pFrequencyHz": self.pFrequencyHz,
-        }
 
-    @classmethod
-    def get_type(cls) -> str:
-        return "kRxBegin"
-
-
-@dataclass
-class RxEnd(WebSocketMessageItem):
+class RxEnd(BaseModel):
     activeTransmitters: list[str]
     callsign: str
     pFrequencyHz: int
 
-    def to_dict(self) -> dict:
-        return {
-            "activeTransmitters": self.activeTransmitters,
-            "callsign": self.callsign,
-            "pFrequencyHz": self.pFrequencyHz,
-        }
 
-    @classmethod
-    def get_type(cls) -> str:
-        return "kRxEnd"
+class WebSocketMessage(BaseModel):
+    type: BroadcastMessageType
+    value: Union[VoiceConnectedState, RxBegin, RxEnd]
+
+    @staticmethod
+    def voice_connected_state(connected: bool) -> 'WebSocketMessage':
+        return WebSocketMessage(
+            type=BroadcastMessageType.kVoiceConnectedState,
+            value=VoiceConnectedState(connected=connected)
+        )
+
+    @staticmethod
+    def rx_begin(active_transmitters: list[str], callsign: str, frequency: int) -> 'WebSocketMessage':
+        return WebSocketMessage(
+            type=BroadcastMessageType.kRxBegin,
+            value=RxBegin(activeTransmitters=active_transmitters, callsign=callsign, pFrequencyHz=frequency)
+        )
+
+    @staticmethod
+    def rx_end(active_transmitters: list[str], callsign: str, frequency: int) -> 'WebSocketMessage':
+        return WebSocketMessage(
+            type=BroadcastMessageType.kRxEnd,
+            value=RxEnd(activeTransmitters=active_transmitters, callsign=callsign, pFrequencyHz=frequency)
+        )

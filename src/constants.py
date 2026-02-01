@@ -11,6 +11,7 @@ config_file_path: Path = Path(getcwd()) / "config.yaml"
 app_version: Version = Version([0, 2, 0])
 app_name: str = "AudioClient"
 app_title: str = f"{app_name} v{app_version.version}"
+version: bytes = f"{app_name}/{app_version.version}".encode("utf-8")
 
 organization_name: str = "APOC Dev team"
 organization_website: str = "https://www.apocfly.com"

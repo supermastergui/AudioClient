@@ -20,10 +20,10 @@ class SelectedButton(QPushButton):
             self._set_deactivate_style()
 
     def _set_activate_style(self):
-        self.setStyleSheet("background-color: rgb(111, 255, 116);color: black;")
+        self.setStyleSheet("background-color: #7ed6df; color: #000000;")
 
     def _set_deactivate_style(self):
-        self.setStyleSheet("background-color: rgb(189, 189, 189);color: black;")
+        self.setStyleSheet("")
 
     @property
     def active(self) -> bool:
