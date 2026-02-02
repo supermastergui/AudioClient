@@ -1,10 +1,7 @@
-#  Copyright (c) 2026 Half_nothing
-#  SPDX-License-Identifier: MIT
 from json import dump, load
-from os import system
 from pathlib import Path
-
 from hashlib import md5
+import subprocess  # 替换 os.system
 
 
 def calculate_file_md5(file_path: Path, *, encoding: str = 'utf8') -> str:
@@ -13,6 +10,19 @@ def calculate_file_md5(file_path: Path, *, encoding: str = 'utf8') -> str:
     with open(file_path, "r", encoding=encoding) as f:
         data = f.read()
     return md5(data.encode(encoding)).hexdigest()
+
+
+def run_command(cmd_list):
+    """运行命令并处理错误"""
+    try:
+        result = subprocess.run(cmd_list, capture_output=True, text=True)
+        if result.returncode != 0:
+            print(f"命令执行失败: {' '.join(cmd_list)}")
+            print(f"错误信息: {result.stderr}")
+        return result.returncode
+    except Exception as e:
+        print(f"执行命令时出错: {e}")
+        return 1
 
 
 def main() -> None:
@@ -43,8 +53,17 @@ def main() -> None:
 
     print("=" * 50)
     print("Processing resource.qrc file")
-    system(f"{rcc_file} {resource_file} -o {root / 'resource_rc.py'}")
-    print("Processing resource.qrc file completed")
+    # 使用 subprocess.run 而不是 os.system
+    return_code = run_command([
+        str(rcc_file),
+        str(resource_file),
+        "-o",
+        str(root / "resource_rc.py")
+    ])
+    if return_code == 0:
+        print("Processing resource.qrc file completed")
+    else:
+        print("Failed to process resource.qrc file")
 
     ui_file_folder = root / "src" / "ui" / "form"
 
@@ -68,8 +87,17 @@ def main() -> None:
         new_md5 = calculate_file_md5(ui_file)
         if str(ui_file) not in cache or cache[str(ui_file)] != new_md5:
             print(f"Processing {ui_file.name}")
-            system(f"{uic_file} {ui_file} -o {output_path}")
-            cache[str(ui_file)] = new_md5
+            # 使用 subprocess.run 而不是 os.system
+            return_code = run_command([
+                str(uic_file),
+                str(ui_file),
+                "-o",
+                str(output_path)
+            ])
+            if return_code == 0:
+                cache[str(ui_file)] = new_md5
+            else:
+                print(f"Failed to process {ui_file.name}")
         else:
             print(f"Using cached {ui_file.name}")
 
