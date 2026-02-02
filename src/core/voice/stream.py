@@ -116,8 +116,10 @@ class OutputAudioSteam(AudioStream):
         self._conflict_queue: Queue[NDArray[float32]] = Queue()
         self._generator = ToneGenerator()
         self._frame_size = 0
+        self._volume = 1.0
 
-    def play_encoded_audio(self, encoded_data: bytes, conflict: bool = False):
+    def play_encoded_audio(self, encoded_data: bytes, conflict: bool = False, volume: float = 1.0):
+        self._volume = volume
         if conflict:
             try:
                 self._conflict_queue.put_nowait(self._generator.generate_frame(self._frame_size))
@@ -154,10 +156,10 @@ class OutputAudioSteam(AudioStream):
     def _callback(self, _, frame_count: int, __, ___) -> tuple[bytes, int]:
         data, success = self._get_conflict_audio()
         if success:
-            return data.tobytes(), paContinue
+            return (data * self._volume).clip(-1.0, 1.0).tobytes(), paContinue
         data, success = self._get_audio(frame_count)
         if success:
-            return data.tobytes(), paContinue
+            return (data * self._volume).clip(-1.0, 1.0).tobytes(), paContinue
         return zeros(frame_count, dtype=float32).tobytes(), paContinue
 
     def start(self, args: SteamArgs):

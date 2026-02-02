@@ -6,7 +6,7 @@
    <rect>
     <x>0</x>
     <y>0</y>
-    <width>505</width>
+    <width>677</width>
     <height>186</height>
    </rect>
   </property>
@@ -41,130 +41,15 @@
       <string>通讯面板</string>
      </property>
      <layout class="QGridLayout" name="gridLayout">
-      <item row="4" column="0">
-       <widget class="QLabel" name="label_freq">
-        <property name="text">
-         <string>频率</string>
-        </property>
-       </widget>
-      </item>
-      <item row="2" column="3">
-       <widget class="SelectedButton" name="button_unicom_freq_rx">
-        <property name="maximumSize">
-         <size>
-          <width>80</width>
-          <height>16777215</height>
-         </size>
-        </property>
-        <property name="text">
-         <string>RX</string>
-        </property>
-       </widget>
-      </item>
-      <item row="2" column="4">
-       <widget class="QSlider" name="unicom_voice_volumn">
-        <property name="sizePolicy">
-         <sizepolicy hsizetype="Expanding" vsizetype="Preferred">
-          <horstretch>0</horstretch>
-          <verstretch>0</verstretch>
-         </sizepolicy>
-        </property>
-        <property name="minimum">
-         <number>0</number>
-        </property>
-        <property name="maximum">
-         <number>100</number>
-        </property>
-        <property name="value">
-         <number>100</number>
-        </property>
-        <property name="orientation">
-         <enum>Qt::Orientation::Horizontal</enum>
-        </property>
-       </widget>
-      </item>
-      <item row="3" column="1">
-       <widget class="QLabel" name="label_emer_freq_v">
-        <property name="text">
-         <string>121.500</string>
-        </property>
-       </widget>
-      </item>
-      <item row="1" column="3">
-       <widget class="SelectedButton" name="button_main_freq_rx">
-        <property name="maximumSize">
-         <size>
-          <width>80</width>
-          <height>16777215</height>
-         </size>
-        </property>
-        <property name="text">
-         <string>RX</string>
-        </property>
-       </widget>
-      </item>
-      <item row="4" column="2">
-       <widget class="SelectedButton" name="button_freq_tx">
-        <property name="text">
-         <string>TX</string>
-        </property>
-       </widget>
-      </item>
-      <item row="2" column="1">
-       <widget class="QLabel" name="label_unicom_v">
-        <property name="text">
-         <string>122.800</string>
-        </property>
-       </widget>
-      </item>
-      <item row="3" column="2">
-       <widget class="SelectedButton" name="button_emer_freq_tx">
-        <property name="maximumSize">
-         <size>
-          <width>80</width>
-          <height>16777215</height>
-         </size>
-        </property>
-        <property name="text">
-         <string>TX</string>
-        </property>
-       </widget>
-      </item>
-      <item row="3" column="0">
-       <widget class="QLabel" name="label_emer_freq">
-        <property name="minimumSize">
-         <size>
-          <width>60</width>
-          <height>0</height>
-         </size>
-        </property>
-        <property name="text">
-         <string>EMER</string>
-        </property>
-       </widget>
-      </item>
-      <item row="2" column="2">
-       <widget class="SelectedButton" name="button_unicom_freq_tx">
-        <property name="maximumSize">
-         <size>
-          <width>80</width>
-          <height>16777215</height>
-         </size>
-        </property>
-        <property name="text">
-         <string>TX</string>
-        </property>
-       </widget>
-      </item>
-      <item row="0" column="1">
-       <widget class="QLabel" name="label_current_freq_v">
+      <item row="1" column="1">
+       <widget class="QLabel" name="label_main_freq_v">
         <property name="text">
          <string>---.---</string>
         </property>
        </widget>
       </item>
-      <item row="4" column="4">
-       <widget class="QSlider" name="custom_voice_volumn">
+      <item row="2" column="4">
+       <widget class="QSlider" name="unicom_voice_volume">
         <property name="sizePolicy">
          <sizepolicy hsizetype="Expanding" vsizetype="Preferred">
           <horstretch>0</horstretch>
@@ -178,7 +63,7 @@
          <number>100</number>
         </property>
         <property name="value">
-         <number>100</number>
+         <number>50</number>
         </property>
         <property name="orientation">
          <enum>Qt::Orientation::Horizontal</enum>
@@ -195,25 +80,50 @@
         </property>
        </widget>
       </item>
-      <item row="3" column="4">
-       <widget class="QSlider" name="emer_voice_volumn">
-        <property name="sizePolicy">
-         <sizepolicy hsizetype="Expanding" vsizetype="Preferred">
-          <horstretch>0</horstretch>
-          <verstretch>0</verstretch>
-         </sizepolicy>
+      <item row="2" column="0">
+       <widget class="QLabel" name="label_unicom">
+        <property name="minimumSize">
+         <size>
+          <width>60</width>
+          <height>0</height>
+         </size>
         </property>
-        <property name="minimum">
-         <number>0</number>
+        <property name="text">
+         <string>UNICOM</string>
         </property>
-        <property name="maximum">
-         <number>100</number>
+       </widget>
+      </item>
+      <item row="2" column="1">
+       <widget class="QLabel" name="label_unicom_v">
+        <property name="text">
+         <string>122.800</string>
         </property>
-        <property name="value">
-         <number>100</number>
+       </widget>
+      </item>
+      <item row="4" column="0">
+       <widget class="QLabel" name="label_freq">
+        <property name="text">
+         <string>频率</string>
         </property>
-        <property name="orientation">
-         <enum>Qt::Orientation::Horizontal</enum>
+       </widget>
+      </item>
+      <item row="3" column="1">
+       <widget class="QLabel" name="label_emer_freq_v">
+        <property name="text">
+         <string>121.500</string>
+        </property>
+       </widget>
+      </item>
+      <item row="3" column="0">
+       <widget class="QLabel" name="label_emer_freq">
+        <property name="minimumSize">
+         <size>
+          <width>60</width>
+          <height>0</height>
+         </size>
+        </property>
+        <property name="text">
+         <string>EMER</string>
         </property>
        </widget>
       </item>
@@ -224,8 +134,31 @@
         </property>
        </widget>
       </item>
-      <item row="1" column="4">
-       <widget class="QSlider" name="main_voice_volumn">
+      <item row="2" column="2">
+       <widget class="SelectedButton" name="button_unicom_freq_tx">
+        <property name="maximumSize">
+         <size>
+          <width>80</width>
+          <height>16777215</height>
+         </size>
+        </property>
+        <property name="text">
+         <string>TX</string>
+        </property>
+       </widget>
+      </item>
+      <item row="4" column="2">
+       <widget class="SelectedButton" name="button_freq_tx">
+        <property name="text">
+         <string>TX</string>
+        </property>
+       </widget>
+      </item>
+      <item row="4" column="4">
+       <widget class="QSlider" name="custom_voice_volume">
+        <property name="enabled">
+         <bool>false</bool>
+        </property>
         <property name="sizePolicy">
          <sizepolicy hsizetype="Expanding" vsizetype="Preferred">
           <horstretch>0</horstretch>
@@ -239,23 +172,10 @@
          <number>100</number>
         </property>
         <property name="value">
-         <number>100</number>
+         <number>50</number>
         </property>
         <property name="orientation">
          <enum>Qt::Orientation::Horizontal</enum>
-        </property>
-       </widget>
-      </item>
-      <item row="1" column="0">
-       <widget class="QLabel" name="label_main_freq">
-        <property name="minimumSize">
-         <size>
-          <width>60</width>
-          <height>0</height>
-         </size>
-        </property>
-        <property name="text">
-         <string>主频率</string>
         </property>
        </widget>
       </item>
@@ -272,58 +192,6 @@
         </property>
        </widget>
       </item>
-      <item row="1" column="2">
-       <widget class="SelectedButton" name="button_main_freq_tx">
-        <property name="maximumSize">
-         <size>
-          <width>80</width>
-          <height>16777215</height>
-         </size>
-        </property>
-        <property name="text">
-         <string>TX</string>
-        </property>
-       </widget>
-      </item>
-      <item row="1" column="1">
-       <widget class="QLabel" name="label_main_freq_v">
-        <property name="text">
-         <string>---.---</string>
-        </property>
-       </widget>
-      </item>
-      <item row="2" column="0">
-       <widget class="QLabel" name="label_unicom">
-        <property name="minimumSize">
-         <size>
-          <width>60</width>
-          <height>0</height>
-         </size>
-        </property>
-        <property name="text">
-         <string>UNICOM</string>
-        </property>
-       </widget>
-      </item>
-      <item row="0" column="4">
-       <widget class="QSlider" name="voice_volumn">
-        <property name="sizePolicy">
-         <sizepolicy hsizetype="Expanding" vsizetype="Preferred">
-          <horstretch>0</horstretch>
-          <verstretch>0</verstretch>
-         </sizepolicy>
-        </property>
-        <property name="maximum">
-         <number>100</number>
-        </property>
-        <property name="value">
-         <number>100</number>
-        </property>
-        <property name="orientation">
-         <enum>Qt::Orientation::Horizontal</enum>
-        </property>
-       </widget>
-      </item>
       <item row="0" column="2">
        <widget class="QPushButton" name="button_small_window">
         <property name="text">
@@ -335,14 +203,38 @@
         </property>
        </widget>
       </item>
-      <item row="0" column="3">
-       <widget class="SelectedButton" name="button_mute">
-        <property name="text">
-         <string/>
+      <item row="1" column="3">
+       <widget class="SelectedButton" name="button_main_freq_rx">
+        <property name="maximumSize">
+         <size>
+          <width>80</width>
+          <height>16777215</height>
+         </size>
         </property>
-        <property name="icon">
-         <iconset resource="../../../resource.qrc">
-          <normaloff>:/icon/mute</normaloff>:/icon/mute</iconset>
+        <property name="text">
+         <string>RX</string>
+        </property>
+       </widget>
+      </item>
+      <item row="1" column="4">
+       <widget class="QSlider" name="main_voice_volume">
+        <property name="sizePolicy">
+         <sizepolicy hsizetype="Expanding" vsizetype="Preferred">
+          <horstretch>0</horstretch>
+          <verstretch>0</verstretch>
+         </sizepolicy>
+        </property>
+        <property name="minimum">
+         <number>0</number>
+        </property>
+        <property name="maximum">
+         <number>100</number>
+        </property>
+        <property name="value">
+         <number>50</number>
+        </property>
+        <property name="orientation">
+         <enum>Qt::Orientation::Horizontal</enum>
         </property>
        </widget>
       </item>
@@ -362,6 +254,152 @@
         </property>
         <property name="text">
          <string>当前频率</string>
+        </property>
+       </widget>
+      </item>
+      <item row="2" column="3">
+       <widget class="SelectedButton" name="button_unicom_freq_rx">
+        <property name="maximumSize">
+         <size>
+          <width>80</width>
+          <height>16777215</height>
+         </size>
+        </property>
+        <property name="text">
+         <string>RX</string>
+        </property>
+       </widget>
+      </item>
+      <item row="1" column="0">
+       <widget class="QLabel" name="label_main_freq">
+        <property name="minimumSize">
+         <size>
+          <width>60</width>
+          <height>0</height>
+         </size>
+        </property>
+        <property name="text">
+         <string>主频率</string>
+        </property>
+       </widget>
+      </item>
+      <item row="0" column="3">
+       <widget class="SelectedButton" name="button_mute">
+        <property name="text">
+         <string/>
+        </property>
+        <property name="icon">
+         <iconset resource="../../../resource.qrc">
+          <normaloff>:/icon/mute</normaloff>:/icon/mute</iconset>
+        </property>
+       </widget>
+      </item>
+      <item row="3" column="2">
+       <widget class="SelectedButton" name="button_emer_freq_tx">
+        <property name="maximumSize">
+         <size>
+          <width>80</width>
+          <height>16777215</height>
+         </size>
+        </property>
+        <property name="text">
+         <string>TX</string>
+        </property>
+       </widget>
+      </item>
+      <item row="0" column="1">
+       <widget class="QLabel" name="label_current_freq_v">
+        <property name="text">
+         <string>---.---</string>
+        </property>
+       </widget>
+      </item>
+      <item row="0" column="4">
+       <widget class="QSlider" name="voice_volume">
+        <property name="sizePolicy">
+         <sizepolicy hsizetype="Expanding" vsizetype="Preferred">
+          <horstretch>0</horstretch>
+          <verstretch>0</verstretch>
+         </sizepolicy>
+        </property>
+        <property name="maximum">
+         <number>100</number>
+        </property>
+        <property name="value">
+         <number>50</number>
+        </property>
+        <property name="orientation">
+         <enum>Qt::Orientation::Horizontal</enum>
+        </property>
+       </widget>
+      </item>
+      <item row="3" column="4">
+       <widget class="QSlider" name="emer_voice_volume">
+        <property name="sizePolicy">
+         <sizepolicy hsizetype="Expanding" vsizetype="Preferred">
+          <horstretch>0</horstretch>
+          <verstretch>0</verstretch>
+         </sizepolicy>
+        </property>
+        <property name="minimum">
+         <number>0</number>
+        </property>
+        <property name="maximum">
+         <number>100</number>
+        </property>
+        <property name="value">
+         <number>50</number>
+        </property>
+        <property name="orientation">
+         <enum>Qt::Orientation::Horizontal</enum>
+        </property>
+       </widget>
+      </item>
+      <item row="1" column="2">
+       <widget class="SelectedButton" name="button_main_freq_tx">
+        <property name="maximumSize">
+         <size>
+          <width>80</width>
+          <height>16777215</height>
+         </size>
+        </property>
+        <property name="text">
+         <string>TX</string>
+        </property>
+       </widget>
+      </item>
+      <item row="0" column="5">
+       <widget class="QLabel" name="label_voice_volume">
+        <property name="text">
+         <string>100%</string>
+        </property>
+       </widget>
+      </item>
+      <item row="1" column="5">
+       <widget class="QLabel" name="label_main_voice_volume">
+        <property name="text">
+         <string>100%</string>
+        </property>
+       </widget>
+      </item>
+      <item row="2" column="5">
+       <widget class="QLabel" name="label_unicom_voice_volume">
+        <property name="text">
+         <string>100%</string>
+        </property>
+       </widget>
+      </item>
+      <item row="3" column="5">
+       <widget class="QLabel" name="label_emer_voice_volume">
+        <property name="text">
+         <string>100%</string>
+        </property>
+       </widget>
+      </item>
+      <item row="4" column="5">
+       <widget class="QLabel" name="label_custom_voice_volume">
+        <property name="text">
+         <string>100%</string>
         </property>
        </widget>
       </item>

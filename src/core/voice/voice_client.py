@@ -31,12 +31,17 @@ class VoiceClient(QObject):
         self._transmitters: dict[int, Transmitter] = {}
         self._last_receive: dict[int, tuple[str, float]] = {}
         self._current_transmitter = -1
+        self._sending = False
 
         self._audio.on_encoded_audio = self._send_voice_data
         self.signals.control_message_received.connect(self._handle_control_message)
         self.signals.voice_data_received.connect(self._handle_voice_packet)
         self.signals.socket_connection_state.connect(self._handle_connection_status)
+        self.signals.ptt_status_change.connect(self.ptt_state)
         self._thread_handler()
+
+    def ptt_state(self, state: bool):
+        self._sending = state
 
     def _thread_handler(self):
         def receiving_clean_handler():
@@ -191,14 +196,17 @@ class VoiceClient(QObject):
         self.receiving[packet.callsign] = time()
         conflict = False
         last_receive = self._last_receive.get(packet.frequency, None)
-        if (last_receive is not None
-                and time() - last_receive[1] < default_frame_time_s * 5
-                and last_receive[0] != packet.callsign):
-            # 5个音频帧内收到了多个发送者发来的数据, 则判定为冲突
+        if self._sending or (last_receive is not None
+                             and time() - last_receive[1] < default_frame_time_s * 5
+                             and last_receive[0] != packet.callsign):
+            # 如果同时在发送, 或者5个音频帧内收到了多个发送者发来的数据, 则判定为冲突
             conflict = True
         else:
             self._last_receive[packet.frequency] = (packet.callsign, time())
-        self._audio.play_encoded_audio(packet.transmitter, packet.data, conflict)
+        transmitter = self._transmitters.get(packet.transmitter, None)
+        if transmitter is None:
+            return
+        self._audio.play_encoded_audio(transmitter, packet.data, conflict)
 
     def _handle_connection_status(self, connected: bool):
         if connected:
