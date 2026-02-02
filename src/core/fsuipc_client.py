@@ -1,7 +1,7 @@
 #  Copyright (c) 2025-2026 Half_nothing
 #  SPDX-License-Identifier: MIT
 from collections.abc import Callable
-from ctypes import POINTER, Structure, c_bool, c_char_p, c_int32, cast, cdll, c_uint8, c_uint32, c_uint16
+from ctypes import POINTER, Structure, c_bool, c_char_p, c_int32, c_uint16, c_uint32, c_uint8, cast, cdll
 from dataclasses import dataclass
 from pathlib import Path
 
@@ -92,6 +92,8 @@ class Version(BaseModel):
 
     @property
     def simulator_name(self, locale: str = "zh-CN") -> str:
+        if self.simulator_type >= len(_simulator_name[locale]):
+            return _simulator_name[locale][0]
         return _simulator_name[locale][self.simulator_type]
 
 

@@ -2,7 +2,7 @@ from sys import exit, stdout
 
 from loguru import logger
 
-from ..config import config
+from src.config import config
 
 
 def logger_init() -> None:

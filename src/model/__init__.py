@@ -1,7 +1,7 @@
-from .config import VersionType
-from .voice_models import MessageType, ConnectionState, ControlMessage, VoicePacket, VoicePacketBuilder
-from .websockets import WebSocketMessage, VoiceConnectedState, RxBegin, RxEnd, BroadcastMessageType
+from .api import ApiResponse, OnlineClientsModel, OnlineClientsModel, OnlineControllerModel, OnlineGeneralModel, \
+    UserLoginModel, UserLoginRequest, UserLoginResponse, UserModel
 from .audio import DeviceInfo, HostApiInfo
 from .client_info import ClientInfo
-from .api import ApiResponse, UserModel, UserLoginModel, UserLoginRequest, UserLoginResponse, OnlineClientsModel, \
-    OnlineControllerModel, OnlineGeneralModel, OnlineClientsModel
+from .config import VersionType
+from .voice_models import ConnectionState, ControlMessage, MessageType, VoicePacket, VoicePacketBuilder
+from .websockets import BroadcastMessageType, RxBegin, RxEnd, VoiceConnectedState, WebSocketMessage

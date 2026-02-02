@@ -7,12 +7,12 @@ from loguru import logger
 from pyaudio import PyAudio
 
 from src.constants import default_channels, default_frame_size, default_sample_rate, opus_default_sample_rate
+from src.model import DeviceInfo
 from src.signal import AudioClientSignals
 from .audio_device_tester import AudioDeviceTester
 from .opus import OpusDecoder, OpusEncoder, SteamArgs
 from .stream import InputAudioSteam, OutputAudioSteam
 from .transmitter import Transmitter
-from ...model import DeviceInfo
 
 
 # 音频处理器

@@ -4,10 +4,10 @@
 from time import time
 from typing import Union
 
-from PySide6.QtCore import QObject, QTimer
+from PySide6.QtCore import QObject
 from loguru import logger
 
-from src.constants import default_frame_time, default_frame_time_s
+from src.constants import default_frame_time_s
 from src.model import ClientInfo, ConnectionState, ControlMessage, MessageType, UserLoginModel, VoicePacket, \
     VoicePacketBuilder
 from src.signal import AudioClientSignals

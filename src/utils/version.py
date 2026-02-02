@@ -1,13 +1,14 @@
 #  Copyright (c) 2025-2026 Half_nothing
 #  SPDX-License-Identifier: MIT
+from typing import Union
 
 from src.model import VersionType
 
 
 class Version:
-    def __init__(self, version: str | list[int]):
+    def __init__(self, version: Union[str, list[int]]):
         if isinstance(version, str):
-            version = version.split('.')
+            version = version.split('.')  # type: ignore
         self._major = int(version[0])
         self._minor = int(version[1])
         self._patch = int(version[2])

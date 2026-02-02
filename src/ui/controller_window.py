@@ -2,8 +2,7 @@
 #  SPDX-License-Identifier: MIT
 from PySide6.QtWidgets import QWidget
 
-from src.core import VoiceClient
-from src.core.voice.transmitter import Transmitter
+from src.core import VoiceClient, Transmitter
 from src.model import ConnectionState
 from src.signal import AudioClientSignals
 from src.utils import clear_error, show_error

@@ -5,3 +5,4 @@ from .generate.config_window import Ui_ConfigWindow
 from .generate.connect_window import Ui_ConnectWindow
 from .generate.loading_window import Ui_LoadingWindow
 from .generate.controller_window import Ui_ControllerWindow
+from .generate.sub_window import Ui_SubWindow

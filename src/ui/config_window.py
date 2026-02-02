@@ -3,12 +3,12 @@
 from PySide6.QtCore import Qt
 from loguru import logger
 
-from .component.frameless_widget import FramelessWidget
-from .form import Ui_ConfigWindow
 from src.config import config, config_manager
+from src.model import DeviceInfo
 from src.signal import AudioClientSignals
 from src.utils import get_device_info, get_host_api_info
-from ..model import DeviceInfo
+from .component.frameless_widget import FramelessWidget
+from .form import Ui_ConfigWindow
 
 
 class ConfigWindow(FramelessWidget, Ui_ConfigWindow):

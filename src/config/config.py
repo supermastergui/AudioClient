@@ -1,11 +1,11 @@
 #  Copyright (c) 2026 Half_nothing
 #  SPDX-License-Identifier: MIT
 
-from typing import Callable, Type, TypeAlias
+from typing import Callable
 
 from loguru import logger
 from pydantic import BaseModel
-from yaml import safe_load, safe_dump
+from yaml import safe_dump, safe_load
 
 from src.constants import config_file, config_version
 from src.model import VersionType

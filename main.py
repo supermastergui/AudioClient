@@ -9,7 +9,6 @@ from PySide6.QtWidgets import QApplication, QStyleFactory
 from loguru import logger
 
 from src.constants import app_name, app_version, organization_name, organization_website
-from src.ui.sub_window import SubWindow
 from src.utils import QSSLoader
 
 
@@ -61,7 +60,7 @@ def main() -> None:
     main_window.show()
     exit_code = app.exec()
     resource_rc.qCleanupResources()
-    main_window.voice_client.shutdown()
+    main_window.voice_client.shutdown()  # type: ignore
     sys.exit(exit_code)
 
 

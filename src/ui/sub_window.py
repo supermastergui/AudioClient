@@ -4,7 +4,7 @@ from PySide6.QtCore import Qt
 
 from src.signal import AudioClientSignals
 from .component.frameless_widget import FramelessWidget
-from .form.generate.sub_window import Ui_SubWindow
+from .form import Ui_SubWindow
 
 
 class SubWindow(FramelessWidget, Ui_SubWindow):

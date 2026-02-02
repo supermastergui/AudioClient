@@ -9,14 +9,12 @@ from PySide6.QtCore import Signal
 from PySide6.QtWidgets import QHeaderView, QTableWidget, QTableWidgetItem, QWidget
 from loguru import logger
 
-from src.core.voice.transmitter import Transmitter
+from src.config import config
+from src.core import Transmitter, VoiceClient, FSUIPCClient
+from src.model import OnlineClientsModel
 from src.utils import http
+from src.utils import show_error
 from .form import Ui_ClientWindow
-from ..config import config
-from ..core import VoiceClient
-from ..core.fsuipc_client import FSUIPCClient
-from ..model import OnlineClientsModel
-from ..utils import show_error
 
 
 class ClientWindow(QWidget, Ui_ClientWindow):

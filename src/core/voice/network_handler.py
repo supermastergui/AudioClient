@@ -1,9 +1,9 @@
 #  Copyright (c) 2025-2026 Half_nothing
 #  SPDX-License-Identifier: MIT
-from time import time
 from socket import AF_INET, SOCK_DGRAM, SOCK_STREAM, socket
 from struct import unpack
 from threading import Thread
+from time import time
 from typing import Optional
 
 from PySide6.QtCore import QObject, QTimer

@@ -2,9 +2,9 @@
 #  SPDX-License-Identifier: MIT
 from pyaudio import PyAudio
 
-from src.core.voice.opus import OpusDecoder, OpusEncoder, SteamArgs
-from src.core.voice.stream import InputAudioSteam, OutputAudioSteam
 from src.signal import AudioClientSignals
+from .opus import OpusDecoder, OpusEncoder, SteamArgs
+from .stream import InputAudioSteam, OutputAudioSteam
 
 
 class AudioDeviceTester:

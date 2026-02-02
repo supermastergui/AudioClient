@@ -76,21 +76,7 @@
     </property>
     <addaction name="action_settings"/>
    </widget>
-   <widget class="QMenu" name="menu_help">
-    <property name="font">
-     <font>
-      <family>Leelawadee UI</family>
-      <pointsize>10</pointsize>
-     </font>
-    </property>
-    <property name="title">
-     <string>帮助</string>
-    </property>
-    <addaction name="action_about"/>
-    <addaction name="action_about_qt"/>
-   </widget>
    <addaction name="menu_file"/>
-   <addaction name="menu_help"/>
   </widget>
   <action name="action_settings">
    <property name="icon">

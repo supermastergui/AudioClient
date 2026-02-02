@@ -6,7 +6,7 @@ from typing import Optional
 
 from loguru import logger
 from numpy import float32, frombuffer, int16, ndarray
-from opuslib import APPLICATION_VOIP, Decoder, Encoder
+from opuslib import APPLICATION_VOIP, Decoder, Encoder  # type: ignore
 
 from src.constants import default_frame_size, opus_default_bitrate, opus_default_sample_rate
 
@@ -34,9 +34,9 @@ class OpusDecoder:
 
     def decode(self, encoded_data: bytes) -> Optional[ndarray]:
         try:
-            pcm_data = self._decoder.decode(encoded_data, self._frame_size)
+            pcm_data = self._decoder.decode(encoded_data, self._frame_size)  # type: ignore
             audio_data = frombuffer(pcm_data, dtype=int16)
-            audio_data = audio_data.astype(float32) / 32768.0
+            audio_data = audio_data.astype(float32) / 32768.0  # type: ignore
             return audio_data
         except Exception as e:
             logger.error(f"OPUS decoding error: {e}")
@@ -68,7 +68,7 @@ class OpusEncoder:
             if audio_data.dtype != int16:
                 audio_data = audio_data.astype(int16) * 32767
             pcm_data = audio_data.tobytes()
-            encoded_data = self._encoder.encode(pcm_data, self._frame_size)
+            encoded_data = self._encoder.encode(pcm_data, self._frame_size)  # type: ignore
             return encoded_data
         except Exception as e:
             logger.error(f"OPUS encoding error: {e}")

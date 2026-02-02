@@ -3,8 +3,8 @@
 
 from PySide6.QtWidgets import QWidget
 
-from .form import Ui_LoadingWindow
 from src.constants import app_title
+from .form import Ui_LoadingWindow
 
 
 class LoadingWindow(QWidget, Ui_LoadingWindow):
