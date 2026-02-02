@@ -1,2 +1,3 @@
-from .mouse_listener import MouseListenerThread
+from .joystick_listener import JoystickListenerThread
 from .keyboard_listener import KeyboardListenerThread
+from .mouse_listener import MouseListenerThread

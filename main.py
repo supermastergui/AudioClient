@@ -49,10 +49,11 @@ def main() -> None:
     last_time = time()
     logger.trace("Creating main window")
     from src.ui.main_window import MainWindow
-    from src.signal import AudioClientSignals, MouseSignals, KeyBoardSignals
+    from src.signal import AudioClientSignals, MouseSignals, KeyBoardSignals, JoystickSignals
     main_signals = AudioClientSignals()
     main_signals.log_message.connect(log_message)
-    main_window = MainWindow(main_signals, MouseSignals(), KeyBoardSignals())
+    main_window = MainWindow(main_signals, MouseSignals(),
+                             KeyBoardSignals(), JoystickSignals())
     logger.trace(f"Create main window cost {time() - last_time:.6f}s")
 
     logger.info(f"Startup completed in {time() - start_time:.6f}s")

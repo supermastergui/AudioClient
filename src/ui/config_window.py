@@ -15,7 +15,7 @@ class ConfigWindow(FramelessWidget, Ui_ConfigWindow):
     def __init__(self, signals: AudioClientSignals):
         super().__init__()
         self.setupUi(self)
-        self.setWindowFlag(Qt.WindowType.Tool)
+        self.setWindowFlag(Qt.WindowType.Tool | Qt.WindowType.WindowStaysOnTopHint)
         self.setAttribute(Qt.WidgetAttribute.WA_TranslucentBackground)
         config_manager.register_save_callback(self.update_config_data)
 

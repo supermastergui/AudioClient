@@ -2,8 +2,7 @@ from typing import Optional
 
 from PySide6.QtWidgets import QPushButton
 
-from src.signal.keyboard_signal import KeyBoardSignals
-from src.signal.mouse_signal import MouseSignals
+from src.signal import JoystickSignals, KeyBoardSignals, MouseSignals
 
 
 class HotkeyButton(QPushButton):
@@ -20,6 +19,7 @@ class HotkeyButton(QPushButton):
             self._cancel_keys = ["Key.esc"]
         self._keyboard_signal: Optional[KeyBoardSignals] = None
         self._mouse_signal: Optional[MouseSignals] = None
+        self._joystick_signal: Optional[JoystickSignals] = None
 
         self._select_message = select_message
         self._start_select = False
@@ -78,3 +78,12 @@ class HotkeyButton(QPushButton):
     def mouse_signal(self, signal: MouseSignals):
         self._mouse_signal = signal
         self._mouse_signal.mouse_clicked.connect(self.handle_button_press)
+
+    @property
+    def joystick_signal(self) -> Optional[JoystickSignals]:
+        return self._joystick_signal
+
+    @joystick_signal.setter
+    def joystick_signal(self, signal: JoystickSignals):
+        self._joystick_signal = signal
+        self._joystick_signal.button_pressed.connect(self.handle_button_press)

@@ -13,8 +13,8 @@ from src.config import config, config_manager
 from src.constants import app_title
 from src.core import VoiceClient, WebSocketBroadcastServer
 from src.model import ConnectionState
-from src.signal import AudioClientSignals, KeyBoardSignals, MouseSignals
-from src.thread import KeyboardListenerThread, MouseListenerThread
+from src.signal import AudioClientSignals, JoystickSignals, KeyBoardSignals, MouseSignals
+from src.thread import JoystickListenerThread, KeyboardListenerThread, MouseListenerThread
 from src.utils import http
 from .component import PTTButton
 from .config_window import ConfigWindow
@@ -26,7 +26,7 @@ from .login_window import LoginWindow
 
 class MainWindow(QMainWindow, Ui_MainWindow):
     def __init__(self, signals: AudioClientSignals, mouse_signals: MouseSignals,
-                 keyboard_signals: KeyBoardSignals) -> None:
+                 keyboard_signals: KeyBoardSignals, joystick_signals: JoystickSignals) -> None:
         super().__init__()
         logger.trace("Creating main window")
 
@@ -39,6 +39,7 @@ class MainWindow(QMainWindow, Ui_MainWindow):
         self.voice_client: Optional[VoiceClient] = None
         self.keyboard_listener: Optional[KeyboardListenerThread] = None
         self.mouse_listener: Optional[MouseListenerThread] = None
+        self.joystick_listener: Optional[JoystickListenerThread] = None
         self.connect_window: Optional[ConnectWindow] = None
         self.login: Optional[LoginWindow] = None
         self.config: Optional[ConfigWindow] = None
@@ -56,6 +57,7 @@ class MainWindow(QMainWindow, Ui_MainWindow):
         self.signals = signals
         self.mouse_signals = mouse_signals
         self.keyboard_signals = keyboard_signals
+        self.joystick_signals = joystick_signals
 
         config_manager.register_save_callback(self.config_update)
 
@@ -112,12 +114,15 @@ class MainWindow(QMainWindow, Ui_MainWindow):
 
         self.mouse_listener = MouseListenerThread(self.mouse_signals)
         self.keyboard_listener = KeyboardListenerThread(self.keyboard_signals)
+        self.joystick_listener = JoystickListenerThread(self.joystick_signals)
 
         self.mouse_listener.start()
         self.keyboard_listener.start()
+        self.joystick_listener.start()
 
         self.config.button_ptt.mouse_signal = self.mouse_signals
         self.config.button_ptt.keyboard_signal = self.keyboard_signals
+        self.config.button_ptt.joystick_signal = self.joystick_signals
 
         self.ptt_button = PTTButton()
         self.config_update()
@@ -125,6 +130,8 @@ class MainWindow(QMainWindow, Ui_MainWindow):
         self.keyboard_signals.key_pressed.connect(self.ptt_button.key_pressed)
         self.mouse_signals.mouse_released.connect(self.ptt_button.key_released)
         self.keyboard_signals.key_released.connect(self.ptt_button.key_released)
+        self.joystick_signals.button_pressed.connect(self.ptt_button.key_pressed)
+        self.joystick_signals.button_released.connect(self.ptt_button.key_released)
         self.ptt_button.ptt_pressed.connect(lambda x: self.signals.ptt_status_change.emit(x))
         self.signals.connection_state_changed.connect(self.handle_connect_status_change)
 
