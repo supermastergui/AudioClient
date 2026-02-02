@@ -7,7 +7,7 @@ from .utils.version import Version
 
 config_version: Version = Version([1, 0, 0])
 config_file: Path = Path.cwd() / "config.yaml"
-app_version: Version = Version([0, 2, 0])
+app_version: Version = Version([1, 0, 0])
 app_name: str = "AudioClient"
 app_title: str = f"{app_name} v{app_version.version}"
 version: bytes = f"{app_name}/{app_version.version}".encode("utf-8")

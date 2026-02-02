@@ -5,7 +5,7 @@ from datetime import datetime
 from pathlib import Path
 from sys import platform
 from threading import Thread
-from time import time
+from time import sleep, time
 
 from PySide6.QtCore import QTimer, Signal
 from PySide6.QtWidgets import QMessageBox, QWidget
@@ -196,24 +196,24 @@ class ConnectWindow(QWidget, Ui_ConnectWindow):
         QMessageBox.critical(self, "无法连接到模拟器", "无法连接到模拟器, 请检查FSUIPC/XPUIPC是否正确安装")
 
     def connect_to_simulator(self):
-        # retry = 0
-        # max_retry = 12
-        # retry_delay = 5
-        # while retry < max_retry:
-        #     res = self.fsuipc_client.open_fsuipc_client()
-        #     if res.request_status:
-        #         logger.success("FSUIPC connection established")
-        #         self.log_message("FSUIPC", "INFO", "FSUIPC连接成功")
-        #         break
-        #     logger.error(f"FSUIPC connection failed, {retry + 1}/{max_retry} times")
-        #     self.log_message("FSUIPC", "ERROR", f"FSUIPC连接失败, 第 {retry + 1}/{max_retry} 次尝试")
-        #     retry += 1
-        #     sleep(retry_delay)
-        # if retry == max_retry:
-        #     logger.error(f"FSUIPC connection failed")
-        #     self.log_message("FSUIPC", "ERROR", "FSUIPC连接失败")
-        #     self.fsuipc_client_connect_fail.emit()
-        #     return
+        retry = 0
+        max_retry = 12
+        retry_delay = 5
+        while retry < max_retry:
+            res = self.fsuipc_client.open_fsuipc_client()
+            if res.request_status:
+                logger.success("FSUIPC connection established")
+                self.log_message("FSUIPC", "INFO", "FSUIPC连接成功")
+                break
+            logger.error(f"FSUIPC connection failed, {retry + 1}/{max_retry} times")
+            self.log_message("FSUIPC", "ERROR", f"FSUIPC连接失败, 第 {retry + 1}/{max_retry} 次尝试")
+            retry += 1
+            sleep(retry_delay)
+        if retry == max_retry:
+            logger.error(f"FSUIPC connection failed")
+            self.log_message("FSUIPC", "ERROR", "FSUIPC连接失败")
+            self.fsuipc_client_connect_fail.emit()
+            return
         self.signals.resize_window.emit(740, 710, True)
         self.fsuipc_client_connected.emit()
 
