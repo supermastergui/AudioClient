@@ -22,3 +22,4 @@ test*
 *.pyc
 __pycache__/
 *generate*/
+resource_rc.py
