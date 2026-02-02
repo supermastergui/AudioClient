@@ -34,13 +34,11 @@ class VoiceConnectedState(BaseModel):
 
 
 class RxBegin(BaseModel):
-    activeTransmitters: list[str]
     callsign: str
     pFrequencyHz: int
 
 
 class RxEnd(BaseModel):
-    activeTransmitters: list[str]
     callsign: str
     pFrequencyHz: int
 
@@ -57,15 +55,15 @@ class WebSocketMessage(BaseModel):
         )
 
     @staticmethod
-    def rx_begin(active_transmitters: list[str], callsign: str, frequency: int) -> 'WebSocketMessage':
+    def rx_begin(callsign: str, frequency: int) -> 'WebSocketMessage':
         return WebSocketMessage(
             type=BroadcastMessageType.kRxBegin,
-            value=RxBegin(activeTransmitters=active_transmitters, callsign=callsign, pFrequencyHz=frequency)
+            value=RxBegin(callsign=callsign, pFrequencyHz=frequency)
         )
 
     @staticmethod
-    def rx_end(active_transmitters: list[str], callsign: str, frequency: int) -> 'WebSocketMessage':
+    def rx_end(callsign: str, frequency: int) -> 'WebSocketMessage':
         return WebSocketMessage(
             type=BroadcastMessageType.kRxEnd,
-            value=RxEnd(activeTransmitters=active_transmitters, callsign=callsign, pFrequencyHz=frequency)
+            value=RxEnd(callsign=callsign, pFrequencyHz=frequency)
         )

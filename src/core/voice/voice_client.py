@@ -23,7 +23,6 @@ class VoiceClient(QObject):
 
         self.signals = signals
         self.client_info = ClientInfo()
-        self.receiving: dict[str, float] = {}
 
         self._connection_state = ConnectionState.DISCONNECTED
         self._network = NetworkHandler(signals, self.client_info)
@@ -38,25 +37,9 @@ class VoiceClient(QObject):
         self.signals.voice_data_received.connect(self._handle_voice_packet)
         self.signals.socket_connection_state.connect(self._handle_connection_status)
         self.signals.ptt_status_change.connect(self.ptt_state)
-        self._thread_handler()
 
     def ptt_state(self, state: bool):
         self._sending = state
-
-    def _thread_handler(self):
-        def receiving_clean_handler():
-            delete_keys = []
-            current_time = time()
-            for callsign, t in self.receiving.items():
-                if current_time - t > default_frame_time_s:
-                    delete_keys.append(callsign)
-            for i in delete_keys:
-                del self.receiving[i]
-
-        clean_timer = QTimer()
-        clean_timer.timeout.connect(receiving_clean_handler)
-        clean_timer.setInterval(default_frame_time)
-        clean_timer.start()
 
     def _log_message(self, level: str, message: str):
         self.signals.log_message.emit("VoiceClient", level, message)
@@ -184,7 +167,6 @@ class VoiceClient(QObject):
             self._set_connection_state(ConnectionState.DISCONNECTED)
 
     def _handle_voice_packet(self, packet: VoicePacket):
-        self.receiving[packet.callsign] = time()
         conflict = False
         last_receive = self._last_receive.get(packet.frequency, None)
         if self._sending or (last_receive is not None

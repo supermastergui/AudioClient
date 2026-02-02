@@ -78,8 +78,10 @@ class MainWindow(QMainWindow, Ui_MainWindow):
         if self.voice_client is not None:
             self.voice_client.client_info.reset()
         self.windows.setCurrentIndex(1)
+        self.resize_window(600, 600, True)
 
     def login_success(self) -> None:
+        self.resize_window(600, 300, True)
         self.windows.setCurrentIndex(2)
 
     def config_update(self) -> bool:
@@ -91,25 +93,22 @@ class MainWindow(QMainWindow, Ui_MainWindow):
     def initialize_complete(self) -> None:
         self.setMinimumSize(0, 0)
 
-        client_info = ClientInfo()
+        self.voice_client = VoiceClient(self.signals)
 
-        self.voice_client = VoiceClient(client_info, self.signals)
-
-        self.login = LoginWindow(self.voice_client, self.signals)
+        self.login = LoginWindow(self.signals, self.voice_client)
         self.login.setObjectName(u"login")
         self.windows.addWidget(self.login)
 
-        self.connect_window = ConnectWindow(self.voice_client, self.signals)
+        self.connect_window = ConnectWindow(self.signals, self.voice_client)
         self.connect_window.setObjectName(u"connect")
-        self.connect_window.sub_window_signals.show_small_window.connect(self.hide)
-        self.connect_window.sub_window_signals.show_full_window.connect(self.show)
+        self.signals.show_small_window.connect(self.hide)
+        self.signals.show_full_window.connect(self.show)
         self.windows.addWidget(self.connect_window)
 
         self.config = ConfigWindow(self.signals)
         self.config.setObjectName(u"config")
 
         self.signals.login_success.connect(self.login_success)
-        self.signals.login_success.connect(self.connect_window.login_success)
 
         self.mouse_listener = MouseListenerThread(self.mouse_signals)
         self.keyboard_listener = KeyboardListenerThread(self.keyboard_signals)
@@ -130,8 +129,7 @@ class MainWindow(QMainWindow, Ui_MainWindow):
         self.signals.connection_state_changed.connect(self.handle_connect_status_change)
 
         self.menubar.setVisible(True)
-        self.resize(600, 600)
-        self.center()
+        self.resize_window(600, 600, True)
         self.windows.setCurrentIndex(1)
         self.loading.stop_animation()
 
@@ -161,6 +159,7 @@ class MainWindow(QMainWindow, Ui_MainWindow):
         self.config.show()
 
     def resize_window(self, width: int, height: int, to_center: bool) -> None:
-        self.resize(width, height)
+        if width > 0 and height > 0:
+            self.resize(width, height)
         if to_center:
             self.center()

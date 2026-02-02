@@ -6,7 +6,7 @@ from time import sleep
 from urllib.parse import urljoin
 
 from PySide6.QtCore import Signal
-from PySide6.QtWidgets import QHBoxLayout, QLabel, QPushButton, QWidget
+from PySide6.QtWidgets import QHeaderView, QTableWidget, QTableWidgetItem, QWidget
 from loguru import logger
 
 from src.core.voice.transmitter import Transmitter
@@ -41,14 +41,43 @@ class ClientWindow(QWidget, Ui_ClientWindow):
         self.com1_transmitter = Transmitter(122800, 0)
         self.com2_transmitter = Transmitter(121500, 1)
 
-        self.controller_map: dict[str, tuple[QHBoxLayout, QLabel, QLabel, QPushButton, QPushButton]] = {}
-
         self.label_com1_freq.setEnabled(False)
         self.label_com2_freq.setEnabled(False)
         self.button_com1_rx.setEnabled(False)
         self.button_com2_rx.setEnabled(False)
 
+        self.table_online_controllers.setColumnCount(2)
+        self.table_online_controllers.setHorizontalHeaderLabels(["呼号", "频率"])
+        self.table_online_controllers.verticalHeader().hide()
+        self.table_online_controllers.horizontalHeader().setSectionResizeMode(QHeaderView.ResizeMode.ResizeToContents)
+        self.table_online_controllers.horizontalHeader().hide()
+        self.table_online_controllers.horizontalHeader().setSectionResizeMode(QHeaderView.ResizeMode.Stretch)
+        self.table_online_controllers.setEditTriggers(QTableWidget.EditTrigger.NoEditTriggers)
+        self.table_online_controllers.setShowGrid(False)
+        self.insert_frequency_row("UNICOM", 122800)
+        self.insert_frequency_row("EMER", 121500)
+
+        self._controller_frequency: dict[str, tuple[int, int]] = {}  # 呼号: (频率, 行数)
+
         self._update_controller_signal.connect(self._update_controller_list)
+
+        self.com1_volume.sliderMoved.connect(self.com1_volume_changed)
+        self.com2_volume.sliderMoved.connect(self.com2_volume_changed)
+
+    def com1_volume_changed(self, value: int):
+        self.com1_transmitter.volume = value / 100
+        self.label_com1_volume.setText(f"{value / 100:.0%}")
+
+    def com2_volume_changed(self, value: int):
+        self.com2_transmitter.volume = value / 100
+        self.label_com2_volume.setText(f"{value / 200:.0%}")
+
+    def insert_frequency_row(self, callsign: str, frequency: int):
+        row = self.table_online_controllers.rowCount()
+        self.table_online_controllers.insertRow(row)
+
+        self.table_online_controllers.setItem(row, 0, QTableWidgetItem(callsign))
+        self.table_online_controllers.setItem(row, 1, QTableWidgetItem(f"{frequency / 1000:.3f}"))
 
     def set_com1_frequency(self, frequency: int):
         self.label_com1_freq.setText(f"{frequency / 1000:.3f}")
@@ -72,81 +101,38 @@ class ClientWindow(QWidget, Ui_ClientWindow):
         self.com2_transmitter.send_flag = self.button_com2_tx.active
         self.voice_client.update_transmitter(self.com2_transmitter)
 
-    def add_frequency_line(self, label: str, frequency: int):
-        layout = QHBoxLayout(self)
-        callsign_label = QLabel(self)
-        callsign_label.setObjectName(f"{label}_callsign")
-        callsign_label.setText(label)
-        callsign_label.setFixedWidth(120)
-        frequency_label = QLabel(self)
-        frequency_label.setObjectName(f"{label}_frequency")
-        frequency_label.setText(f"{frequency / 1000:.3f}")
-        frequency_label.setFixedWidth(100)
-        com1_button = QPushButton(self)
-        com1_button.setObjectName(f"{label}_com1")
-        com1_button.setText("COM1")
-        com1_button.clicked.connect(lambda: self.set_com1_frequency(frequency))
-        com2_button = QPushButton(self)
-        com2_button.setObjectName(f"{label}_com2")
-        com2_button.setText("COM2")
-        com2_button.clicked.connect(lambda: self.set_com2_frequency(frequency))
-        layout.addWidget(callsign_label)
-        layout.addWidget(frequency_label)
-        layout.addWidget(com1_button)
-        layout.addWidget(com2_button)
-        self.controller_map[label] = (layout, callsign_label, frequency_label, com1_button, com2_button)
-        self.controller_list.addLayout(layout)
-        self.controller_list.update()
-
-    def reset_frequency(self, label: str, frequency: int):
-        item = self.controller_map.get(label, None)
-        if item is None:
-            return
-        _, _, frequency_label, com1_button, com2_button = item
-        frequency_label.setText(f"{frequency / 1000:.3f}")
-        try:
-            com1_button.clicked.disconnect()
-            com2_button.clicked.disconnect()
-        except:
-            pass
-        com1_button.clicked.connect(lambda: self.set_com1_frequency(frequency))
-        com2_button.clicked.connect(lambda: self.set_com2_frequency(frequency))
-
-    def remove_layout(self, label: str):
-        item = self.controller_map.get(label, None)
-        if item is None:
-            return
-        layout, callsign_label, frequency_label, com1_button, com2_button = item
-        self.controller_list.removeItem(layout)
-        callsign_label.destroy()
-        frequency_label.destroy()
-        com1_button.destroy()
-        com2_button.destroy()
-        layout.setParent(None)
-        del self.controller_map[label]
-        self.controller_list.update()
-
     def _update_controller_list(self, data: OnlineClientsModel):
         controllers: set[str] = set()
         for controller in data.controllers:
+            if controller.rating <= 1:
+                continue
             controllers.add(controller.callsign)
-            item = self.controller_map.get(controller.callsign, None)
-            if item is None:
-                self.add_frequency_line(controller.callsign, controller.frequency)
+            if controller.callsign not in self._controller_frequency:
+                self.insert_frequency_row(controller.callsign, controller.frequency)
+                self._controller_frequency[controller.callsign] = (controller.frequency,
+                                                                   self.table_online_controllers.rowCount() - 1)
+            else:
+                frequency, row = self._controller_frequency[controller.callsign]
+                if frequency != controller.frequency:
+                    self.table_online_controllers.setItem(row, 1,
+                                                          QTableWidgetItem(f"{controller.frequency / 1000:.3f}"))
+        for callsign, (frequency, row) in list(self._controller_frequency.items()):
+            if callsign not in controllers:
+                self.table_online_controllers.removeRow(row)
+                del self._controller_frequency[callsign]
+        for i in range(2, self.table_online_controllers.rowCount()):
+            c = self.table_online_controllers.item(i, 0)
+            if c is None:
                 continue
-            if item[2].text() != f"{controller.frequency / 1000:.3f}":
-                self.reset_frequency(controller.callsign, controller.frequency)
-        for c in list(self.controller_map.keys()):
-            if c in controllers or c == "UNICOM" or c == "EMER":
+            key = c.text()
+            if key not in self._controller_frequency:
                 continue
-            self.remove_layout(c)
+            self._controller_frequency[key] = (self._controller_frequency[key][0], i)
 
     def start(self):
         self.voice_client.add_transmitter(self.com1_transmitter)
         self.voice_client.add_transmitter(self.com2_transmitter)
         self.thread_exit.clear()
-        self.add_frequency_line("UNICOM", 122800)
-        self.add_frequency_line("EMER", 121500)
         Thread(target=self._update_controller_list_thread, daemon=True).start()
         Thread(target=self._receive_frequency, daemon=True).start()
 
@@ -223,7 +209,6 @@ class ClientWindow(QWidget, Ui_ClientWindow):
                 err_count += 1
             if err_count >= 3:
                 logger.error(f"Too many error received from FSUIPC: {err_count}, disconnecting")
-                # TODO: 通知用户
                 break
             sleep(1)
 

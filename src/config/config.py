@@ -38,7 +38,7 @@ class AudioConfig(BaseModel):
     input_device: str = "默认"
     output_device: str = "默认"
     microphone_gain: int = 0
-    ptt_key: str = "Key.ctrl_l"
+    ptt_key: str = "Key.ctrl_r"
 
 
 class Config(BaseModel):

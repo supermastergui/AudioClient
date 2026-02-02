@@ -100,6 +100,8 @@ class AudioHandler:
         stream = self._output_streams.get(transmitter.id, None)
         if stream is None:
             return
+        if transmitter.volume == 0:
+            return
         stream.play_encoded_audio(encoded_data, conflict, transmitter.volume)
 
     def start(self):

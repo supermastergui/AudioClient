@@ -85,7 +85,7 @@
        </widget>
       </item>
       <item row="1" column="7">
-       <widget class="QPushButton" name="button_connect">
+       <widget class="SelectedButton" name="button_connect">
         <property name="sizePolicy">
          <sizepolicy hsizetype="Minimum" vsizetype="Preferred">
           <horstretch>0</horstretch>
@@ -266,6 +266,11 @@
    <class>IndicatorButton</class>
    <extends>QPushButton</extends>
    <header>src/ui/component/indicator_button.h</header>
+  </customwidget>
+  <customwidget>
+   <class>SelectedButton</class>
+   <extends>QPushButton</extends>
+   <header>src/ui/component/selected_button.h</header>
   </customwidget>
  </customwidgets>
  <resources/>
