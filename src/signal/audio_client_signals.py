@@ -3,7 +3,7 @@
 
 from PySide6.QtCore import QObject, Signal
 
-from src.model import ConnectionState, ControlMessage, VoicePacket, WebSocketMessage
+from src.model import ConnectionState, ControlMessage, DeviceInfo, VoicePacket, WebSocketMessage
 
 
 class AudioClientSignals(QObject):
@@ -38,12 +38,22 @@ class AudioClientSignals(QObject):
     # emit when frequency change
     update_current_frequency = Signal(int)
 
+    # emit when request to show full window
+    show_full_window = Signal()
+    # emit when request to show small window
+    show_small_window = Signal()
+
+    # emit when test audio device
+    test_audio_device = Signal(bool)
+    # emit when microphone gain changed
+    microphone_gain_changed = Signal(int)
+
     # signals below are for internal use
     # emit when tcp and udp socket connect or disconnect
     socket_connection_state = Signal(bool)
     # emit when input device changed
-    audio_input_device_change = Signal(int)
+    audio_input_device_change = Signal(DeviceInfo)
     # emit when output device changed
-    audio_output_device_change = Signal(int)
+    audio_output_device_change = Signal(DeviceInfo)
     # emit when ptt button pressed or released
     ptt_status_change = Signal(bool)

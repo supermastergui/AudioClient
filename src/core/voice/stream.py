@@ -47,6 +47,15 @@ class InputAudioSteam(AudioStream):
         self._input_active = False
         self._encoder = encoder
         self._on_encoded_audio: Optional[Callable[[bytes], None]] = on_encoded_audio
+        self._gain = 0  # 默认0dB
+
+    @property
+    def gain(self) -> int:
+        return self._gain
+
+    @gain.setter
+    def gain(self, gain: int):
+        self._gain = gain
 
     @property
     def input_active(self) -> bool:
@@ -61,12 +70,13 @@ class InputAudioSteam(AudioStream):
         return self._on_encoded_audio
 
     @on_encoded_audio.setter
-    def on_encoded_audio(self, on_encoded_audio: Optional[Callable[[bytes], None]]):
+    def on_encoded_audio(self, on_encoded_audio: Callable[[bytes], None]):
         self._on_encoded_audio = on_encoded_audio
 
     def _callback(self, in_data, _, __, ___):
         if self._input_active and self._on_encoded_audio:
-            audio_data = frombuffer(in_data, dtype=int16)
+            audio_data = frombuffer(in_data, dtype=int16) * (10 ** (self._gain / 20))
+            audio_data = audio_data.clip(-32768, 32767).astype(int16)
             # 重采样麦克风输入的音频
             # 麦克风输入的采样率通常为44100Hz
             # OPUS编码的音频采样率通常为48000Hz

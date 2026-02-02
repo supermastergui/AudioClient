@@ -26,7 +26,7 @@ class VoiceClient(QObject):
         self.receiving: dict[str, float] = {}
 
         self._connection_state = ConnectionState.DISCONNECTED
-        self._network = NetworkHandler(signals, client_info)
+        self._network = NetworkHandler(signals, self.client_info)
         self._audio = AudioHandler(signals)
         self._transmitters: dict[int, Transmitter] = {}
         self._last_receive: dict[int, tuple[str, float]] = {}

@@ -178,7 +178,8 @@ QWidget#loading_widget {
     border-radius: 10px;
 }
 
-QWidget#sub_widget {
+QWidget#sub_widget,
+QWidget#config_widget {
     color: #E0E0E0;
     font-weight: bold;
     background-color: #3A3D4D;

@@ -3,10 +3,12 @@
 
 from typing import Callable, Optional
 
+from loguru import logger
 from pyaudio import PyAudio
 
 from src.constants import default_channels, default_frame_size, default_sample_rate, opus_default_sample_rate
 from src.signal import AudioClientSignals
+from .audio_device_tester import AudioDeviceTester
 from .opus import OpusDecoder, OpusEncoder, SteamArgs
 from .stream import InputAudioSteam, OutputAudioSteam
 from .transmitter import Transmitter
@@ -28,28 +30,39 @@ class AudioHandler:
         self._input_stream = InputAudioSteam(self._audio, self._encoder)
         self._output_streams: dict[int, OutputAudioSteam] = {}
 
+        self._device_tester = AudioDeviceTester(audio_signal, self._audio, self._encoder, self._decoder)
+
         self.audio_signal = audio_signal
         self.audio_signal.ptt_status_change.connect(self._ptt_status_change)
         self.audio_signal.audio_input_device_change.connect(self._input_device_change)
         self.audio_signal.audio_output_device_change.connect(self._output_device_change)
+        self.audio_signal.test_audio_device.connect(self._test_audio_device)
+        self.audio_signal.microphone_gain_changed.connect(self._microphone_gain_change)
 
     @property
     def on_encoded_audio(self) -> Optional[Callable[[bytes], None]]:
         return self._input_stream.on_encoded_audio
 
     @on_encoded_audio.setter
-    def on_encoded_audio(self, on_encoded_audio: Optional[Callable[[bytes], None]]):
+    def on_encoded_audio(self, on_encoded_audio: Callable[[bytes], None]):
         self._input_stream.on_encoded_audio = on_encoded_audio
+
+    def _microphone_gain_change(self, gain: int):
+        self._input_stream.gain = gain
 
     def _ptt_status_change(self, status: bool):
         self._input_stream.input_active = status
 
-    def _input_device_change(self, index: int):
-        if index != -1:
-            data = self._audio.get_device_info_by_index(index)
+    def _test_audio_device(self, state: bool):
+        if state:
+            self._device_tester.start_test(self._input_args, self._output_args)
         else:
-            data = self._audio.get_default_input_device_info()
-        info = DeviceInfo.model_validate(data)
+            self._device_tester.stop_test()
+
+    def _input_device_change(self, info: Optional[DeviceInfo]):
+        if info is None:
+            info = DeviceInfo.model_validate(self._audio.get_default_input_device_info())
+        logger.info(f"input device change: {info}")
         self._input_args.device_index = info.index
         self._input_args.channel = max(info.maxInputChannels // 2, default_channels)
         self._input_args.sample_rate = int(info.defaultSampleRate)
@@ -57,22 +70,23 @@ class AudioHandler:
             default_frame_size * self._input_args.sample_rate / opus_default_sample_rate
         ) * self._input_args.channel
         self._encoder.update(self._input_args)
+        self._device_tester.update_input_device(self._input_args)
         if not self._input_stream.active:
             return
         self._input_stream.restart(self._input_args)
 
-    def _output_device_change(self, index: int):
-        if index != -1:
-            data = self._audio.get_device_info_by_index(index)
-        else:
-            data = self._audio.get_default_output_device_info()
-        info = DeviceInfo.model_validate(data)
+    def _output_device_change(self, info: Optional[DeviceInfo]):
+        if info is None:
+            info = DeviceInfo.model_validate(self._audio.get_default_output_device_info())
+        logger.info(f"output device change: {info}")
+        self._output_args.device_index = info.index
         self._output_args.channel = max(info.maxOutputChannels // 2, default_channels)
         self._output_args.sample_rate = int(info.defaultSampleRate)
         self._output_args.frame_size = int(
             default_frame_size * self._output_args.sample_rate / opus_default_sample_rate
         ) * self._input_args.channel
         self._decoder.update(self._output_args)
+        self._device_tester.update_output_device(self._output_args)
         for stream in self._output_streams.values():
             if not stream.active:
                 continue
