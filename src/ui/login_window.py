@@ -1,6 +1,6 @@
 #  Copyright (c) 2025-2026 Half_nothing
 #  SPDX-License-Identifier: MIT
-
+from json import JSONDecodeError
 from urllib.parse import urljoin
 
 from PySide6.QtWidgets import QMessageBox, QWidget
@@ -62,7 +62,10 @@ class LoginWindow(QWidget, Ui_LoginWindow):
 
         if response.status_code != 200:
             logger.error(f"Login failed with status code {response.status_code}")
-            QMessageBox.critical(self, "登陆失败", response.json().get("message", "发生未知错误"))
+            try:
+                QMessageBox.critical(self, "登陆失败", response.json().get("message", "发生未知错误"))
+            except JSONDecodeError:
+                QMessageBox.critical(self, "登陆失败", f"未知错误，错误代码: {response.status_code}")
             return
 
         data = UserLoginResponse.model_validate_json(response.content).data

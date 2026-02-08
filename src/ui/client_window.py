@@ -7,7 +7,7 @@ from time import sleep
 from typing import Optional
 from urllib.parse import urljoin
 
-from PySide6.QtCore import Signal
+from PySide6.QtCore import Qt, Signal
 from PySide6.QtWidgets import QHeaderView, QMessageBox, QTableWidget, QTableWidgetItem, QWidget
 from loguru import logger
 
@@ -66,12 +66,19 @@ class ClientWindow(QWidget, Ui_ClientWindow):
 
         self._controller_frequency: dict[str, tuple[int, int]] = {}  # 呼号: (频率, 行数)
 
-        self._update_controller_signal.connect(self._update_controller_list)
+        # 以下信号在 threading.Thread 中 emit，必须用 QueuedConnection 保证槽在主线程执行，避免未响应/崩溃
+        self._update_controller_signal.connect(
+            self._update_controller_list, Qt.ConnectionType.QueuedConnection
+        )
+        self._fsuipc_client_connected.connect(
+            self._fsuipc_connected, Qt.ConnectionType.QueuedConnection
+        )
+        self._com_info_update.connect(
+            self.update_com_info, Qt.ConnectionType.QueuedConnection
+        )
 
         self.com1_volume.sliderMoved.connect(self.com1_volume_changed)
         self.com2_volume.sliderMoved.connect(self.com2_volume_changed)
-        self._fsuipc_client_connected.connect(self._fsuipc_connected)
-        self._com_info_update.connect(self.update_com_info)
         self.button_connect.clicked.connect(self.connect_to_simulator)
 
     def load_fsuipc_lib(self) -> Optional[FSUIPCClient]:

@@ -5,7 +5,7 @@ from datetime import datetime
 from threading import Thread
 from time import time
 
-from PySide6.QtCore import QTimer
+from PySide6.QtCore import Qt, QTimer
 from PySide6.QtWidgets import QMessageBox, QWidget
 
 from src.config import config
@@ -46,14 +46,25 @@ class ConnectWindow(QWidget, Ui_ConnectWindow):
         self.send_timeout_timer.setInterval(default_frame_time // 4)
         self.send_timeout_timer.start()
 
-        self.signals.error_occurred.connect(self.handle_connect_error)
-        self.signals.connection_state_changed.connect(self.connect_state_changed)
-        self.signals.show_log_message.connect(self.log_message)
+        # 以下信号可能在网络线程中 emit，用 QueuedConnection 保证槽在主线程执行
+        self.signals.error_occurred.connect(
+            self.handle_connect_error, Qt.ConnectionType.QueuedConnection
+        )
+        self.signals.connection_state_changed.connect(
+            self.connect_state_changed, Qt.ConnectionType.QueuedConnection
+        )
+        self.signals.show_log_message.connect(
+            self.log_message, Qt.ConnectionType.QueuedConnection
+        )
 
         self.button_connect.clicked.connect(self.connect_to_server)
         self.button_exit.clicked.connect(lambda: signals.logout_request.emit())
-        self.voice_client.signals.voice_data_sent.connect(self.tx_send)
-        self.voice_client.signals.voice_data_received.connect(self.rx_receive)
+        self.voice_client.signals.voice_data_sent.connect(
+            self.tx_send, Qt.ConnectionType.QueuedConnection
+        )
+        self.voice_client.signals.voice_data_received.connect(
+            self.rx_receive, Qt.ConnectionType.QueuedConnection
+        )
         self.signals.login_success.connect(self.login_success)
 
     def check_rx_timeout(self):

@@ -1,5 +1,6 @@
 from typing import Optional
 
+from PySide6.QtCore import Qt
 from PySide6.QtWidgets import QPushButton
 
 from src.signal import JoystickSignals, KeyBoardSignals, MouseSignals
@@ -68,7 +69,9 @@ class HotkeyButton(QPushButton):
     @keyboard_signal.setter
     def keyboard_signal(self, signal: KeyBoardSignals):
         self._keyboard_signal = signal
-        self._keyboard_signal.key_pressed.connect(self.handle_button_press)
+        self._keyboard_signal.key_pressed.connect(
+            self.handle_button_press, Qt.ConnectionType.QueuedConnection
+        )
 
     @property
     def mouse_signal(self) -> Optional[MouseSignals]:
@@ -77,7 +80,9 @@ class HotkeyButton(QPushButton):
     @mouse_signal.setter
     def mouse_signal(self, signal: MouseSignals):
         self._mouse_signal = signal
-        self._mouse_signal.mouse_clicked.connect(self.handle_button_press)
+        self._mouse_signal.mouse_clicked.connect(
+            self.handle_button_press, Qt.ConnectionType.QueuedConnection
+        )
 
     @property
     def joystick_signal(self) -> Optional[JoystickSignals]:
@@ -86,4 +91,6 @@ class HotkeyButton(QPushButton):
     @joystick_signal.setter
     def joystick_signal(self, signal: JoystickSignals):
         self._joystick_signal = signal
-        self._joystick_signal.button_pressed.connect(self.handle_button_press)
+        self._joystick_signal.button_pressed.connect(
+            self.handle_button_press, Qt.ConnectionType.QueuedConnection
+        )

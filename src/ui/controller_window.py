@@ -1,5 +1,6 @@
 #  Copyright (c) 2025-2026 Half_nothing
 #  SPDX-License-Identifier: MIT
+from PySide6.QtCore import Qt
 from PySide6.QtWidgets import QWidget
 
 from src.core import VoiceClient, Transmitter
@@ -31,8 +32,13 @@ class ControllerWindow(QWidget, Ui_ControllerWindow):
         self.button_emer_freq_rx.clicked.connect(self.emer_freq_rx_click)
         self.button_freq_tx.clicked.connect(self.freq_tx_click)
         self.button_freq_rx.clicked.connect(self.freq_rx_click)
-        self.voice_client.signals.connection_state_changed.connect(self.connect_state_changed)
-        self.voice_client.signals.update_current_frequency.connect(self.set_current_frequency)
+        # 以下信号可能在网络线程中 emit，用 QueuedConnection 保证槽在主线程执行
+        self.voice_client.signals.connection_state_changed.connect(
+            self.connect_state_changed, Qt.ConnectionType.QueuedConnection
+        )
+        self.voice_client.signals.update_current_frequency.connect(
+            self.set_current_frequency, Qt.ConnectionType.QueuedConnection
+        )
         self.line_edit_freq.editingFinished.connect(self.decode_frequency)
         self.button_mute.clicked.connect(self.mute_all)
         self.voice_volume.sliderMoved.connect(self.voice_volume_move)

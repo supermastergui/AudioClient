@@ -3,6 +3,7 @@
 
 from typing import Optional
 
+from PySide6.QtCore import Qt
 from PySide6.QtGui import QScreen
 from PySide6.QtWidgets import QApplication, QMainWindow
 from loguru import logger
@@ -56,7 +57,10 @@ class MainWindow(QMainWindow, Ui_MainWindow):
         config_manager.register_save_callback(self.config_update)
 
         http.initialize()
-        http.client_initialized.connect(self.initialize_complete)
+        # client_initialized 在 threading.Thread 中 emit，槽会大量更新 UI，必须 QueuedConnection
+        http.client_initialized.connect(
+            self.initialize_complete, Qt.ConnectionType.QueuedConnection
+        )
         self.action_settings.triggered.connect(self.show_config_window)
         signals.show_config_windows.connect(self.show_config_window)
         signals.logout_request.connect(self.logout_request)
@@ -112,16 +116,32 @@ class MainWindow(QMainWindow, Ui_MainWindow):
 
         self.ptt_button = PTTButton()
         self.config_update()
-        self.mouse_signals.mouse_clicked.connect(self.ptt_button.key_pressed)
-        self.keyboard_signals.key_pressed.connect(self.ptt_button.key_pressed)
-        self.mouse_signals.mouse_released.connect(self.ptt_button.key_released)
-        self.keyboard_signals.key_released.connect(self.ptt_button.key_released)
-        self.joystick_signals.button_pressed.connect(self.ptt_button.key_pressed)
-        self.joystick_signals.button_released.connect(self.ptt_button.key_released)
+        # 以下信号在监听线程 (QThread) 中 emit，用 QueuedConnection 保证槽在主线程执行
+        self.mouse_signals.mouse_clicked.connect(
+            self.ptt_button.key_pressed, Qt.ConnectionType.QueuedConnection
+        )
+        self.keyboard_signals.key_pressed.connect(
+            self.ptt_button.key_pressed, Qt.ConnectionType.QueuedConnection
+        )
+        self.mouse_signals.mouse_released.connect(
+            self.ptt_button.key_released, Qt.ConnectionType.QueuedConnection
+        )
+        self.keyboard_signals.key_released.connect(
+            self.ptt_button.key_released, Qt.ConnectionType.QueuedConnection
+        )
+        self.joystick_signals.button_pressed.connect(
+            self.ptt_button.key_pressed, Qt.ConnectionType.QueuedConnection
+        )
+        self.joystick_signals.button_released.connect(
+            self.ptt_button.key_released, Qt.ConnectionType.QueuedConnection
+        )
         self.ptt_button.ptt_pressed.connect(lambda x: self.signals.ptt_status_change.emit(x))
         # 使用同一个状态信号驱动提示音（由 AudioHandler 在用户选择的输出设备上播放）
         self.ptt_button.ptt_pressed.connect(lambda x: self.signals.ptt_beep.emit(x))
-        self.signals.connection_state_changed.connect(self.handle_connect_status_change)
+        # connection_state_changed 在网络线程中 emit，用 QueuedConnection 保证槽在主线程执行
+        self.signals.connection_state_changed.connect(
+            self.handle_connect_status_change, Qt.ConnectionType.QueuedConnection
+        )
 
         self.menubar.setVisible(True)
         self.resize_window(600, 600, True)
