@@ -261,12 +261,14 @@ class ClientWindow(QWidget, Ui_ClientWindow):
     def com1_rx_clicked(self):
         if self.sync_receive_flag.isChecked():
             return
+        self.com1_transmitter.send_flag = self.button_com1_tx.active
         self.com1_transmitter.receive_flag = self.button_com1_rx.active
         self.voice_client.update_transmitter(self.com1_transmitter)
 
     def com2_rx_clicked(self):
         if self.sync_receive_flag.isChecked():
             return
+        self.com2_transmitter.send_flag = self.button_com2_tx.active
         self.com2_transmitter.receive_flag = self.button_com2_rx.active
         self.voice_client.update_transmitter(self.com2_transmitter)
 

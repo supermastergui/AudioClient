@@ -14,3 +14,6 @@ class Transmitter:
     def clear(self):
         self.send_flag = False
         self.receive_flag = False
+
+    def __repr__(self) -> str:
+        return f"<Transmitter id={self.id} frequency={self.frequency} send_flag={self.send_flag} receive_flag={self.receive_flag}>"

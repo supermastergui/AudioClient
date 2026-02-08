@@ -162,6 +162,7 @@ class ControllerWindow(QWidget, Ui_ControllerWindow):
         self.voice_client.update_transmitter(self._custom_transmitter)
 
     def freq_rx_click(self):
+        self._custom_transmitter.send_flag = self.button_freq_tx.active
         self._custom_transmitter.receive_flag = self.button_freq_rx.active
         self.voice_client.update_transmitter(self._custom_transmitter)
 
@@ -173,6 +174,7 @@ class ControllerWindow(QWidget, Ui_ControllerWindow):
         self.voice_client.update_transmitter(self._main_transmitter)
 
     def main_freq_rx_click(self):
+        self._main_transmitter.send_flag = self.button_main_freq_tx.active
         self._main_transmitter.receive_flag = self.button_main_freq_rx.active
         self.voice_client.update_transmitter(self._main_transmitter)
 
@@ -184,6 +186,7 @@ class ControllerWindow(QWidget, Ui_ControllerWindow):
         self.voice_client.update_transmitter(self._unicom_transmitter)
 
     def unicom_freq_rx_click(self):
+        self._unicom_transmitter.send_flag = self.button_unicom_freq_tx.active
         self._unicom_transmitter.receive_flag = self.button_unicom_freq_rx.active
         self.voice_client.update_transmitter(self._unicom_transmitter)
 
@@ -195,6 +198,7 @@ class ControllerWindow(QWidget, Ui_ControllerWindow):
         self.voice_client.update_transmitter(self._emer_transmitter)
 
     def emer_freq_rx_click(self):
+        self._emer_transmitter.send_flag = self.button_emer_freq_tx.active
         self._emer_transmitter.receive_flag = self.button_emer_freq_rx.active
         self.voice_client.update_transmitter(self._emer_transmitter)
 
