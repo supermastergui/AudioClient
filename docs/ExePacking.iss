@@ -4,7 +4,7 @@
 ; Download Inno Setup: https://jrsoftware.org/isdl.php
 
 #define MyAppName "AudioClient"
-#define MyAppVersion "1.0.1"
+#define MyAppVersion "1.1.0"
 #define AppCopyright "Copyright © 2025-2026 Half_nothing"
 #define MyAppPublisher "Half_nothing"
 #define MyAppPublisherURL "https://www.half-nothing.cn/"
