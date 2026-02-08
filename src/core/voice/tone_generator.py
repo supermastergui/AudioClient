@@ -20,6 +20,18 @@ class ToneGenerator:
         self.phase_pointer = 0
         self._precalculate_waveform()
 
+    def update_frequency(self, frequency: float):
+        self.frequency = frequency
+        self._precalculate_waveform()
+
+    def update_amplitude(self, amplitude: float):
+        self.amplitude = amplitude
+        self._precalculate_waveform()
+
+    def update_sample_rate(self, sample_rate: int):
+        self.sample_rate = sample_rate
+        self._precalculate_waveform()
+
     def update_arguments(self, sample_rate: int = 44100, frequency: float = 293.66, amplitude: float = 0.3):
         self.sample_rate = sample_rate
         self.frequency = frequency

@@ -39,6 +39,9 @@ class AudioConfig(BaseModel):
     output_device: str = "默认"
     microphone_gain: int = 0
     ptt_key: str = "Key.ctrl_r"
+    ptt_press_freq: float = 1500.0
+    ptt_release_freq: float = 1000.0
+    ptt_volume: float = 1.0
 
 
 class Config(BaseModel):

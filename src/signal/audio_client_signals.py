@@ -48,6 +48,13 @@ class AudioClientSignals(QObject):
     # emit when microphone gain changed
     microphone_gain_changed = Signal(int)
 
+    # emit when ptt press freq changed
+    ptt_press_freq_changed = Signal(float)
+    # emit when ptt release freq changed
+    ptt_release_freq_changed = Signal(float)
+    # emit when ptt volume changed
+    ptt_volume_changed = Signal(float)
+
     # signals below are for internal use
     # emit when tcp and udp socket connect or disconnect
     socket_connection_state = Signal(bool)

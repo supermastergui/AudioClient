@@ -14,6 +14,7 @@ from .opus import OpusDecoder, OpusEncoder, SteamArgs
 from .stream import InputAudioSteam, OutputAudioSteam
 from .tone_generator import ToneGenerator
 from .transmitter import Transmitter
+from src.config import config
 
 
 # 音频处理器
@@ -33,8 +34,9 @@ class AudioHandler:
 
         # 用于 PTT 提示音的专用 ToneGenerator（按下/松开各一个），
         # 在此处创建并在输出设备变更时更新采样率。
-        self._ptt_press_tone = ToneGenerator(default_sample_rate, 1800.0, 0.3)
-        self._ptt_release_tone = ToneGenerator(default_sample_rate, 1200.0, 0.3)
+        self._ptt_press_tone = ToneGenerator(default_sample_rate, config.audio.ptt_press_freq, 0.3)
+        self._ptt_release_tone = ToneGenerator(default_sample_rate, config.audio.ptt_release_freq, 0.3)
+        self._beep_volume = config.audio.ptt_volume
 
         self._device_tester = AudioDeviceTester(audio_signal, self._audio, self._encoder, self._decoder)
 
@@ -45,6 +47,16 @@ class AudioHandler:
         self.audio_signal.audio_output_device_change.connect(self._output_device_change)
         self.audio_signal.test_audio_device.connect(self._test_audio_device)
         self.audio_signal.microphone_gain_changed.connect(self._microphone_gain_change)
+        self.audio_signal.ptt_press_freq_changed.connect(
+            lambda freq: self._ptt_press_tone.update_frequency(freq)
+        )
+        self.audio_signal.ptt_release_freq_changed.connect(
+            lambda freq: self._ptt_release_tone.update_frequency(freq)
+        )
+        self.audio_signal.ptt_volume_changed.connect(self.ptt_beep_volume_change)
+
+    def ptt_beep_volume_change(self, volume: float):
+        self._beep_volume = volume
 
     @property
     def on_encoded_audio(self) -> Optional[Callable[[bytes], None]]:
@@ -67,12 +79,11 @@ class AudioHandler:
         所有已激活的输出流都会播放，以保持与接收音频相同的设备选择。
         """
         tone = self._ptt_press_tone if pressed else self._ptt_release_tone
-        wave = tone.generate_frame(self._device_tester.output_stream.frame_size)
+        wave = tone.generate_frame(self._device_tester.output_stream.frame_size) * 0.5 * self._beep_volume
         self._device_tester.output_stream.enqueue_conflict_wave(wave)
         for stream in self._output_streams.values():
             if not stream.active or stream.frame_size <= 0:
                 continue
-            # 一帧的长度足以形成一个极短的提示音
             wave = tone.generate_frame(stream.frame_size)
             stream.enqueue_conflict_wave(wave)
 
@@ -109,9 +120,8 @@ class AudioHandler:
             default_frame_size * self._output_args.sample_rate / opus_default_sample_rate
         ) * self._input_args.channel
         self._decoder.update(self._output_args)
-        # 同步更新 PTT 提示音的采样率
-        self._ptt_press_tone.update_arguments(self._output_args.sample_rate, 1800.0, 0.3)
-        self._ptt_release_tone.update_arguments(self._output_args.sample_rate, 1200.0, 0.3)
+        self._ptt_press_tone.update_sample_rate(self._output_args.sample_rate)
+        self._ptt_release_tone.update_sample_rate(self._output_args.sample_rate)
         self._device_tester.update_output_device(self._output_args)
         for stream in self._output_streams.values():
             if not stream.active:

@@ -45,6 +45,10 @@ class ConfigWindow(FramelessWidget, Ui_ConfigWindow):
 
         self.button_ptt.select_message = "按下ESC退出"
 
+        self.ptt_sound.sliderMoved.connect(self.ptt_volume_change)
+        self.ptt_press_freq.valueChanged.connect(self.ptt_press_freq_change)
+        self.ptt_release_freq.valueChanged.connect(self.ptt_release_freq_change)
+
     def _test_audio_device(self):
         self.signals.test_audio_device.emit(self.button_test.active)
         self.button_ok.setEnabled(not self.button_test.active)
@@ -93,6 +97,16 @@ class ConfigWindow(FramelessWidget, Ui_ConfigWindow):
             self.combo_box_audio_output.addItem(output_device)
         self.combo_box_audio_output.setCurrentIndex(0)
 
+    def ptt_volume_change(self, value: int):
+        self.ptt_sound_value.setText(f"{value / 100:.0%}")
+        self.signals.ptt_volume_changed.emit(value / 100)
+
+    def ptt_press_freq_change(self, value: float):
+        self.signals.ptt_press_freq_changed.emit(value)
+
+    def ptt_release_freq_change(self, value: float):
+        self.signals.ptt_release_freq_changed.emit(value)
+
     def update_config_data(self) -> bool:
         self.label_config_version_2.setText(config.version)
         self.combo_box_log_level.setCurrentText(config.log.level.upper())
@@ -106,6 +120,10 @@ class ConfigWindow(FramelessWidget, Ui_ConfigWindow):
         self.button_ptt.selected_key = config.audio.ptt_key
         self.label_microphone_gain.setText(f"{config.audio.microphone_gain}dB")
         self.microphone_gain.setValue(config.audio.microphone_gain)
+        self.ptt_press_freq.setValue(config.audio.ptt_press_freq)
+        self.ptt_release_freq.setValue(config.audio.ptt_release_freq)
+        self.ptt_sound.setValue(int(config.audio.ptt_volume * 100))
+        self.ptt_sound_value.setText(f"{config.audio.ptt_volume:.0%}")
 
         return True
 
@@ -124,6 +142,9 @@ class ConfigWindow(FramelessWidget, Ui_ConfigWindow):
         config.audio.output_device = self.combo_box_audio_output.currentText()
         config.audio.ptt_key = self.button_ptt.selected_key
         config.audio.microphone_gain = self.microphone_gain.value()
+        config.audio.ptt_press_freq = self.ptt_press_freq.value()
+        config.audio.ptt_release_freq = self.ptt_release_freq.value()
+        config.audio.ptt_volume = self.ptt_sound.value() / 100
 
         config_manager.save()
 
@@ -133,3 +154,6 @@ class ConfigWindow(FramelessWidget, Ui_ConfigWindow):
         self.signals.microphone_gain_changed.emit(config.audio.microphone_gain)
         self.signals.audio_input_device_change.emit(self._audio_inputs.get(config.audio.input_device, None))
         self.signals.audio_output_device_change.emit(self._audio_outputs.get(config.audio.output_device, None))
+        self.signals.ptt_press_freq_changed.emit(config.audio.ptt_press_freq)
+        self.signals.ptt_release_freq_changed.emit(config.audio.ptt_release_freq)
+        self.signals.ptt_volume_changed.emit(config.audio.ptt_volume)
