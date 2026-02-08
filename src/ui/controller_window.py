@@ -3,7 +3,7 @@
 from PySide6.QtCore import Qt
 from PySide6.QtWidgets import QWidget
 
-from src.core import VoiceClient, Transmitter
+from src.core import Transmitter, VoiceClient
 from src.model import ConnectionState
 from src.signal import AudioClientSignals
 from src.utils import clear_error, show_error
@@ -49,6 +49,28 @@ class ControllerWindow(QWidget, Ui_ControllerWindow):
 
         self.sub_window = SubWindow(signals)
         self.button_small_window.clicked.connect(lambda: self.signals.show_small_window.emit())
+
+        self.button_main_speaker.setEnabled(False)
+        self.button_emer_speaker.setEnabled(False)
+        self.button_unicom_speaker.setEnabled(False)
+        self.button_freq_speaker.setEnabled(False)
+        self.button_main_speaker.clicked.connect(
+            lambda: self._on_output_target_change(self._main_transmitter, self.button_main_speaker.active)
+        )
+        self.button_emer_speaker.clicked.connect(
+            lambda: self._on_output_target_change(self._emer_transmitter, self.button_emer_speaker.active)
+        )
+        self.button_unicom_speaker.clicked.connect(
+            lambda: self._on_output_target_change(self._unicom_transmitter, self.button_unicom_speaker.active)
+        )
+        self.button_freq_speaker.clicked.connect(
+            lambda: self._on_output_target_change(self._custom_transmitter, self.button_freq_speaker.active)
+        )
+
+    def _on_output_target_change(self, transmitter: Transmitter, speaker: bool) -> None:
+        transmitter.output_target = "speaker" if speaker else "headphone"
+        if self.voice_client.client_ready:
+            self.voice_client.set_transmitter_output_target(transmitter)
 
     def voice_volume_move(self, volume: int):
         if self.main_voice_volume.value() > volume:
@@ -135,19 +157,25 @@ class ControllerWindow(QWidget, Ui_ControllerWindow):
         self.sub_window.label_current_freq_v.setText(freq)
 
     def decode_frequency(self):
-        frequency = int(float(self.line_edit_freq.text()) * 1000)
+        try:
+            frequency = int(float(self.line_edit_freq.text()) * 1000)
+        except ValueError:
+            frequency = 0
         if frequency < 3000 or frequency > 200000:
             show_error(self.line_edit_freq)
             self._frequency = -1
             self.button_freq_rx.active = False
             self.button_freq_tx.active = False
+            self.button_freq_speaker.active = False
             self.button_freq_rx.setEnabled(False)
             self.button_freq_tx.setEnabled(False)
+            self.button_freq_speaker.setEnabled(False)
             self.custom_voice_volume.setEnabled(False)
             return
         clear_error(self.line_edit_freq)
         self.button_freq_rx.setEnabled(True)
         self.button_freq_tx.setEnabled(True)
+        self.button_freq_speaker.setEnabled(self.button_freq_rx.active)
         if not self.button_mute.active:
             self.custom_voice_volume.setEnabled(True)
         self._frequency = frequency
@@ -164,6 +192,7 @@ class ControllerWindow(QWidget, Ui_ControllerWindow):
     def freq_rx_click(self):
         self._custom_transmitter.send_flag = self.button_freq_tx.active
         self._custom_transmitter.receive_flag = self.button_freq_rx.active
+        self.button_freq_speaker.setEnabled(self.button_freq_rx.active)
         self.voice_client.update_transmitter(self._custom_transmitter)
 
     def main_freq_tx_click(self):
@@ -176,6 +205,7 @@ class ControllerWindow(QWidget, Ui_ControllerWindow):
     def main_freq_rx_click(self):
         self._main_transmitter.send_flag = self.button_main_freq_tx.active
         self._main_transmitter.receive_flag = self.button_main_freq_rx.active
+        self.button_main_speaker.setEnabled(self.button_main_freq_rx.active)
         self.voice_client.update_transmitter(self._main_transmitter)
 
     def unicom_freq_tx_click(self):
@@ -183,11 +213,13 @@ class ControllerWindow(QWidget, Ui_ControllerWindow):
         self.button_emer_freq_tx.active = False
         self.button_main_freq_tx.active = False
         self._unicom_transmitter.send_flag = self.button_unicom_freq_tx.active
+        self.button_main_speaker.setEnabled(self.button_main_freq_rx.active)
         self.voice_client.update_transmitter(self._unicom_transmitter)
 
     def unicom_freq_rx_click(self):
         self._unicom_transmitter.send_flag = self.button_unicom_freq_tx.active
         self._unicom_transmitter.receive_flag = self.button_unicom_freq_rx.active
+        self.button_unicom_speaker.setEnabled(self.button_unicom_freq_rx.active)
         self.voice_client.update_transmitter(self._unicom_transmitter)
 
     def emer_freq_tx_click(self):
@@ -200,6 +232,7 @@ class ControllerWindow(QWidget, Ui_ControllerWindow):
     def emer_freq_rx_click(self):
         self._emer_transmitter.send_flag = self.button_emer_freq_tx.active
         self._emer_transmitter.receive_flag = self.button_emer_freq_rx.active
+        self.button_emer_speaker.setEnabled(self.button_emer_freq_rx.active)
         self.voice_client.update_transmitter(self._emer_transmitter)
 
     def clear(self):
@@ -220,8 +253,10 @@ class ControllerWindow(QWidget, Ui_ControllerWindow):
         self.button_emer_freq_rx.active = False
         self.button_freq_rx.active = False
 
+        self.button_freq_speaker.active = False
         self.button_freq_tx.setEnabled(False)
         self.button_freq_rx.setEnabled(False)
+        self.button_freq_speaker.setEnabled(False)
 
     def connect_state_changed(self, state: ConnectionState):
         if not self.voice_client.client_info.is_atc:

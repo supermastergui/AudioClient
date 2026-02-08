@@ -43,8 +43,8 @@ class AudioClientSignals(QObject):
     # emit when request to show small window
     show_small_window = Signal()
 
-    # emit when test audio device
-    test_audio_device = Signal(bool)
+    # emit when test audio device; (state, target) target is "headphone" or "speaker"
+    test_audio_device = Signal(bool, str)
     # emit when microphone gain changed
     microphone_gain_changed = Signal(int)
 
@@ -54,14 +54,18 @@ class AudioClientSignals(QObject):
     ptt_release_freq_changed = Signal(float)
     # emit when ptt volume changed
     ptt_volume_changed = Signal(float)
+    # emit when conflict volume changed (0.0..1.0)
+    conflict_volume_changed = Signal(float)
 
     # signals below are for internal use
     # emit when tcp and udp socket connect or disconnect
     socket_connection_state = Signal(bool)
     # emit when input device changed
     audio_input_device_change = Signal(DeviceInfo)
-    # emit when output device changed
+    # emit when output device changed (耳机)
     audio_output_device_change = Signal(DeviceInfo)
+    # emit when speaker output device changed (扬声器)
+    audio_output_device_speaker_change = Signal(DeviceInfo)
     # emit when ptt button pressed or released
     ptt_status_change = Signal(bool)
     # emit when need to play ptt beep (True=press, False=release)

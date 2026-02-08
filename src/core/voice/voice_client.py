@@ -80,6 +80,9 @@ class VoiceClient(QObject):
             return
         self.update_transmitter(transmitter)
 
+    def set_transmitter_output_target(self, transmitter: Transmitter) -> None:
+        self._audio.set_transmitter_output_target(transmitter)
+
     def remove_transmitter(self, transmitter_id: int):
         del self._transmitters[transmitter_id]
 

@@ -1,6 +1,6 @@
 #  Copyright (c) 2025-2026 Half_nothing
 #  SPDX-License-Identifier: MIT
-from asyncio import get_running_loop, new_event_loop, set_event_loop
+from asyncio import get_running_loop, new_event_loop, run, set_event_loop
 from datetime import datetime
 from threading import Thread
 from time import time
@@ -125,8 +125,7 @@ class ConnectWindow(QWidget, Ui_ConnectWindow):
             self.client_window.stop()
             self.connected = False
             self.button_connect.active = False
-            self.websocket.stop()
-            self.client_window.stop()
+            run(self.websocket.stop())
             return
 
         self.voice_client.connect_to_server(

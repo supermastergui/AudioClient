@@ -81,6 +81,20 @@ class ClientWindow(QWidget, Ui_ClientWindow):
         self.com2_volume.sliderMoved.connect(self.com2_volume_changed)
         self.button_connect.clicked.connect(self.connect_to_simulator)
 
+        self.button_com1_speaker.setEnabled(False)
+        self.button_com2_speaker.setEnabled(False)
+        self.button_com1_speaker.clicked.connect(
+            lambda: self._on_output_target_change(self.com1_transmitter, self.button_com1_speaker.active)
+        )
+        self.button_com2_speaker.clicked.connect(
+            lambda: self._on_output_target_change(self.com2_transmitter, self.button_com2_speaker.active)
+        )
+
+    def _on_output_target_change(self, transmitter: Transmitter, speaker: bool) -> None:
+        transmitter.output_target = "speaker" if speaker else "headphone"
+        if self.voice_client.client_ready:
+            self.voice_client.set_transmitter_output_target(transmitter)
+
     def load_fsuipc_lib(self) -> Optional[FSUIPCClient]:
         lib_path = Path.cwd() / "lib"
         try:
@@ -263,6 +277,7 @@ class ClientWindow(QWidget, Ui_ClientWindow):
             return
         self.com1_transmitter.send_flag = self.button_com1_tx.active
         self.com1_transmitter.receive_flag = self.button_com1_rx.active
+        self.button_com1_speaker.setEnabled(self.button_com1_rx.active)
         self.voice_client.update_transmitter(self.com1_transmitter)
 
     def com2_rx_clicked(self):
@@ -270,6 +285,7 @@ class ClientWindow(QWidget, Ui_ClientWindow):
             return
         self.com2_transmitter.send_flag = self.button_com2_tx.active
         self.com2_transmitter.receive_flag = self.button_com2_rx.active
+        self.button_com2_speaker.setEnabled(self.button_com2_rx.active)
         self.voice_client.update_transmitter(self.com2_transmitter)
 
     def stop(self):
@@ -324,11 +340,13 @@ class ClientWindow(QWidget, Ui_ClientWindow):
         if self.com1_transmitter.receive_flag != com1_rx:
             self.com1_transmitter.receive_flag = com1_rx
             self.button_com1_rx.active = com1_rx
+            self.button_com1_speaker.setEnabled(com1_rx)
             self.voice_client.update_transmitter(self.com1_transmitter)
 
         if self.com2_transmitter.receive_flag != com2_rx:
             self.com2_transmitter.receive_flag = com2_rx
             self.button_com2_rx.active = com2_rx
+            self.button_com2_speaker.setEnabled(com2_rx)
             self.voice_client.update_transmitter(self.com2_transmitter)
 
     def update_com_info(self, com1_freq: int, com1_standby: int, com2_freq: int, com2_standby: int,

@@ -37,11 +37,13 @@ class AudioConfig(BaseModel):
     api_driver: str = "自动"
     input_device: str = "默认"
     output_device: str = "默认"
+    output_device_speaker: str = "默认"
     microphone_gain: int = 0
     ptt_key: str = "Key.ctrl_r"
     ptt_press_freq: float = 1500.0
     ptt_release_freq: float = 1000.0
     ptt_volume: float = 1.0
+    conflict_volume: float = 1.0
 
 
 class Config(BaseModel):
@@ -65,6 +67,7 @@ class Config(BaseModel):
         match config_version.check_version(Version(c.version)):
             case VersionType.MAJOR_UNMATCH | VersionType.MINOR_UNMATCH:
                 logger.critical(f"Config version error! Require {config_version} but got {c.version}")
+                exit(0)
             case VersionType.PATCH_UNMATCH:
                 logger.warning(f"Config version not match! Require {config_version} but got {c.version}")
         return c

@@ -3,6 +3,7 @@
 
 from abc import ABC, abstractmethod
 from queue import Empty, Full, Queue
+from threading import current_thread
 from typing import Callable, Optional
 
 from loguru import logger
@@ -14,6 +15,29 @@ from soxr import resample  # type: ignore
 from src.constants import default_sample_rate, opus_default_sample_rate
 from .opus import OpusDecoder, OpusEncoder, SteamArgs
 from .tone_generator import ToneGenerator
+from ...config import config
+
+
+def _resample_to_output(
+        audio_data: NDArray[float32],
+        out_sample_rate: int,
+        frame_size: int,
+        volume: float,
+) -> list[NDArray[float32]]:
+    """将解码后的 PCM 重采样到输出采样率，并按 frame_size 切分为多帧，每帧乘以 volume。"""
+    if audio_data.size == 0:
+        return []
+    resampled = resample(
+        audio_data, opus_default_sample_rate, out_sample_rate
+    ).astype(float32)
+    resampled = (resampled * volume).clip(-1.0, 1.0)
+    frames = []
+    for i in range(0, resampled.size, frame_size):
+        end = min(i + frame_size, resampled.size)
+        chunk = zeros(frame_size, dtype=float32)
+        chunk[: end - i] = resampled[i:end]
+        frames.append(chunk)
+    return frames
 
 
 class AudioStream(ABC):
@@ -132,6 +156,12 @@ class OutputAudioSteam(AudioStream):
     def frame_size(self) -> int:
         return self._frame_size
 
+    def play_conflict(self, volume: float):
+        try:
+            self._conflict_queue.put_nowait(self._generator.generate_frame(self._frame_size) * volume)
+        except Full:
+            return
+
     def enqueue_conflict_wave(self, wave: NDArray[float32]) -> None:
         """将一段已经生成好的浮点波形送入冲突队列播放。"""
         if not self._active or self._frame_size <= 0:
@@ -146,10 +176,7 @@ class OutputAudioSteam(AudioStream):
     def play_encoded_audio(self, encoded_data: bytes, conflict: bool = False, volume: float = 1.0):
         self._volume = volume
         if conflict:
-            try:
-                self._conflict_queue.put_nowait(self._generator.generate_frame(self._frame_size))
-            except Full:
-                logger.warning("Output conflict queue full, dropping audio packet")
+            self.play_conflict()
             return
         try:
             self._queue.put_nowait(encoded_data)
@@ -190,7 +217,7 @@ class OutputAudioSteam(AudioStream):
     def start(self, args: SteamArgs):
         if self._active:
             return
-        self._generator.update_arguments(args.sample_rate)
+        self._generator.update_sample_rate(args.sample_rate)
         self._frame_size = args.frame_size
         self._sample_rate = args.sample_rate
         try:
@@ -216,3 +243,130 @@ class OutputAudioSteam(AudioStream):
             self._stream = None
         self._active = False
         logger.info("Stopped audio playback")
+
+
+class MixedOutputAudioStream(AudioStream):
+    """
+    单设备混合输出：将多个 transmitter 的 PCM 按帧叠加后输出到同一设备。
+    解码在调用线程完成，每路一个队列存放已解码且重采样后的 float32 帧。
+    """
+
+    def __init__(self, audio: PyAudio, decoder: OpusDecoder):
+        super().__init__(audio)
+        self._decoder = decoder
+        self._transmitter_queues: dict[int, Queue[NDArray[float32]]] = {}
+        self._conflict_queue: Queue[NDArray[float32]] = Queue()
+        self._generator = ToneGenerator()
+        self._frame_size = 0
+        self._sample_rate = default_sample_rate
+        self._stream: Optional[Stream] = None
+
+    @property
+    def frame_size(self) -> int:
+        return self._frame_size
+
+    def add_transmitter(self, transmitter_id: int) -> None:
+        if transmitter_id not in self._transmitter_queues:
+            self._transmitter_queues[transmitter_id] = Queue()
+
+    def remove_transmitter(self, transmitter_id: int) -> None:
+        self._transmitter_queues.pop(transmitter_id, None)
+
+    def enqueue_conflict_wave(self, wave: NDArray[float32]) -> None:
+        if not self._active or self._frame_size <= 0 or wave.size == 0:
+            return
+        try:
+            self._conflict_queue.put_nowait(wave.astype(float32))
+        except Full:
+            logger.warning("Mixed output conflict queue full, dropping")
+
+    def play_encoded_audio(
+            self,
+            transmitter_id: int,
+            encoded_data: bytes,
+            conflict: bool = False,
+            volume: float = 1.0,
+    ) -> None:
+        if not self._active or self._frame_size <= 0:
+            return
+        if transmitter_id not in self._transmitter_queues:
+            return
+        if conflict:
+            try:
+                frame = self._generator.generate_frame(self._frame_size) * volume * config.audio.conflict_volume
+                self._conflict_queue.put_nowait(frame.astype(float32))
+            except Full:
+                logger.warning("Mixed output conflict queue full, dropping")
+            return
+        audio_data = self._decoder.decode(encoded_data)
+        if audio_data is None:
+            return
+        for frame in _resample_to_output(audio_data, self._sample_rate, self._frame_size, volume):
+            try:
+                self._transmitter_queues[transmitter_id].put_nowait(frame)
+            except Full:
+                logger.warning(f"Transmitter {transmitter_id} queue full, dropping frame")
+
+    def _get_conflict_audio(self) -> tuple[NDArray[float32], bool]:
+        try:
+            return self._conflict_queue.get_nowait(), True
+        except Empty:
+            return zeros(0, dtype=float32), False
+
+    def _mix_one_frame(self, frame_count: int) -> NDArray[float32]:
+        mixed = zeros(frame_count, dtype=float32)
+        for q in self._transmitter_queues.values():
+            try:
+                frame = q.get_nowait()
+                if frame.size == frame_count:
+                    mixed += frame
+                elif frame.size > 0:
+                    mixed += frame[:frame_count]
+            except Empty:
+                pass
+        return mixed.clip(-1.0, 1.0)
+
+    def _callback(self, _, frame_count: int, __, ___) -> tuple[bytes, int]:
+        data, has_conflict = self._get_conflict_audio()
+        if has_conflict:
+            return data.tobytes(), paContinue
+        mixed = self._mix_one_frame(frame_count)
+        return mixed.tobytes(), paContinue
+
+    def start(self, args: SteamArgs):
+        if self._active:
+            return
+        self._generator.update_sample_rate(args.sample_rate)
+        self._frame_size = args.frame_size
+        self._sample_rate = args.sample_rate
+        try:
+            self._stream = self._audio.open(
+                format=paFloat32,
+                channels=args.channel,
+                rate=args.sample_rate,
+                output=True,
+                output_device_index=args.device_index,
+                frames_per_buffer=args.frame_size,
+                stream_callback=self._callback,
+            )
+            self._active = True
+            self._stream.start_stream()
+            logger.info("Started mixed audio playback")
+        except Exception as e:
+            logger.error(f"Failed to start mixed playback: {e}")
+
+    def stop(self):
+        if self._stream is not None:
+            try:
+                self._stream.stop_stream()
+                self._stream.close()
+            except Exception:
+                pass
+            self._stream = None
+        self._active = False
+        self._transmitter_queues.clear()
+        logger.info("Stopped mixed audio playback")
+
+    def restart(self, args: SteamArgs):
+        self.stop()
+        self.start(args)

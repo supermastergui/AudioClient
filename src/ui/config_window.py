@@ -1,10 +1,10 @@
 #  Copyright (c) 2025-2026 Half_nothing
 #  SPDX-License-Identifier: MIT
-from PySide6.QtCore import Qt
+from PySide6.QtCore import Qt, QTimer
 from loguru import logger
 
 from src.config import config, config_manager
-from src.model import DeviceInfo
+from src.model import ConnectionState, DeviceInfo
 from src.signal import AudioClientSignals
 from src.utils import get_device_info, get_host_api_info
 from .component.frameless_widget import FramelessWidget
@@ -35,9 +35,13 @@ class ConfigWindow(FramelessWidget, Ui_ConfigWindow):
         self.audio_input_device_change(self.combo_box_audio_input.currentText())
         self.combo_box_audio_output.currentTextChanged.connect(self.audio_output_device_change)
         self.audio_output_device_change(self.combo_box_audio_output.currentText())
+        self.combo_box_audio_output_speaker.currentTextChanged.connect(self.audio_output_speaker_device_change)
+        self.audio_output_speaker_device_change(self.combo_box_audio_output_speaker.currentText())
 
         self.microphone_gain.sliderMoved.connect(self.microphone_gain_change)
-        self.button_test.clicked.connect(self._test_audio_device)
+        self.button_test_headphone.clicked.connect(self._test_headphone)
+        self.button_test_speaker.clicked.connect(self._test_speaker)
+        self.button_test_conflict.clicked.connect(self._test_conflict)
 
         self.button_cancel.clicked.connect(self.cancel)
         self.button_apply.clicked.connect(self.apply)
@@ -48,12 +52,47 @@ class ConfigWindow(FramelessWidget, Ui_ConfigWindow):
         self.ptt_sound.sliderMoved.connect(self.ptt_volume_change)
         self.ptt_press_freq.valueChanged.connect(self.ptt_press_freq_change)
         self.ptt_release_freq.valueChanged.connect(self.ptt_release_freq_change)
+        self.conflict_volume.sliderMoved.connect(self.conflict_volume_change)
+        self.signals.connection_state_changed.connect(
+            self.handle_connect_status_change, Qt.ConnectionType.QueuedConnection
+        )
 
-    def _test_audio_device(self):
-        self.signals.test_audio_device.emit(self.button_test.active)
-        self.button_ok.setEnabled(not self.button_test.active)
-        self.button_apply.setEnabled(not self.button_test.active)
-        self.button_cancel.setEnabled(not self.button_test.active)
+    def _any_test_active(self) -> bool:
+        return (
+                self.button_test_headphone.active
+                or self.button_test_speaker.active
+                or self.button_test_conflict.active
+        )
+
+    def _update_test_buttons_state(self) -> None:
+        any_test = self._any_test_active()
+        self.button_ok.setEnabled(not any_test)
+        self.button_apply.setEnabled(not any_test)
+        self.button_cancel.setEnabled(not any_test)
+
+    def _test_headphone(self) -> None:
+        active = self.button_test_headphone.active
+        if active:
+            self.button_test_speaker.active = False
+            self.button_test_conflict.active = False
+        self.signals.test_audio_device.emit(active, "headphone")
+        self._update_test_buttons_state()
+
+    def _test_speaker(self) -> None:
+        active = self.button_test_speaker.active
+        if active:
+            self.button_test_headphone.active = False
+            self.button_test_conflict.active = False
+        self.signals.test_audio_device.emit(active, "speaker")
+        self._update_test_buttons_state()
+
+    def _test_conflict(self) -> None:
+        active = self.button_test_conflict.active
+        if active:
+            self.button_test_headphone.active = False
+            self.button_test_speaker.active = False
+        self.signals.test_audio_device.emit(active, "conflict")
+        self._update_test_buttons_state()
 
     def microphone_gain_change(self, value: int):
         self.label_microphone_gain.setText(f"{value}dB")
@@ -68,8 +107,14 @@ class ConfigWindow(FramelessWidget, Ui_ConfigWindow):
     def audio_output_device_change(self, value: str):
         if not value:
             return
-        logger.trace(f"Audio output device change: {value}")
+        logger.trace(f"Audio output (headphone) device change: {value}")
         self.signals.audio_output_device_change.emit(self._audio_outputs.get(value, None))
+
+    def audio_output_speaker_device_change(self, value: str):
+        if not value:
+            return
+        logger.trace(f"Audio output (speaker) device change: {value}")
+        self.signals.audio_output_device_speaker_change.emit(self._audio_outputs.get(value, None))
 
     def audio_device_update(self, driver_name: str):
         logger.trace(f"Audio device driver update to: {driver_name}")
@@ -96,6 +141,11 @@ class ConfigWindow(FramelessWidget, Ui_ConfigWindow):
         for output_device in self._audio_outputs:
             self.combo_box_audio_output.addItem(output_device)
         self.combo_box_audio_output.setCurrentIndex(0)
+        self.combo_box_audio_output_speaker.clear()
+        self.combo_box_audio_output_speaker.addItem("默认")
+        for output_device in self._audio_outputs:
+            self.combo_box_audio_output_speaker.addItem(output_device)
+        self.combo_box_audio_output_speaker.setCurrentIndex(0)
 
     def ptt_volume_change(self, value: int):
         self.ptt_sound_value.setText(f"{value / 100:.0%}")
@@ -107,6 +157,10 @@ class ConfigWindow(FramelessWidget, Ui_ConfigWindow):
     def ptt_release_freq_change(self, value: float):
         self.signals.ptt_release_freq_changed.emit(value)
 
+    def conflict_volume_change(self, value: int):
+        self.conflict_volume_v.setText(f"{value}%")
+        self.signals.conflict_volume_changed.emit(value / 100)
+
     def update_config_data(self) -> bool:
         self.label_config_version_2.setText(config.version)
         self.combo_box_log_level.setCurrentText(config.log.level.upper())
@@ -117,6 +171,7 @@ class ConfigWindow(FramelessWidget, Ui_ConfigWindow):
         self.combo_box_audio_driver.setCurrentText(config.audio.api_driver)
         self.combo_box_audio_input.setCurrentText(config.audio.input_device)
         self.combo_box_audio_output.setCurrentText(config.audio.output_device)
+        self.combo_box_audio_output_speaker.setCurrentText(config.audio.output_device_speaker)
         self.button_ptt.selected_key = config.audio.ptt_key
         self.label_microphone_gain.setText(f"{config.audio.microphone_gain}dB")
         self.microphone_gain.setValue(config.audio.microphone_gain)
@@ -124,6 +179,8 @@ class ConfigWindow(FramelessWidget, Ui_ConfigWindow):
         self.ptt_release_freq.setValue(config.audio.ptt_release_freq)
         self.ptt_sound.setValue(int(config.audio.ptt_volume * 100))
         self.ptt_sound_value.setText(f"{config.audio.ptt_volume:.0%}")
+        self.conflict_volume.setValue(int(config.audio.conflict_volume * 100))
+        self.conflict_volume_v.setText(f"{config.audio.conflict_volume * 100:.0f}%")
 
         return True
 
@@ -140,20 +197,44 @@ class ConfigWindow(FramelessWidget, Ui_ConfigWindow):
         config.audio.api_driver = self.combo_box_audio_driver.currentText()
         config.audio.input_device = self.combo_box_audio_input.currentText()
         config.audio.output_device = self.combo_box_audio_output.currentText()
+        config.audio.output_device_speaker = self.combo_box_audio_output_speaker.currentText()
         config.audio.ptt_key = self.button_ptt.selected_key
         config.audio.microphone_gain = self.microphone_gain.value()
         config.audio.ptt_press_freq = self.ptt_press_freq.value()
         config.audio.ptt_release_freq = self.ptt_release_freq.value()
         config.audio.ptt_volume = self.ptt_sound.value() / 100
+        config.audio.conflict_volume = self.conflict_volume.value() / 100
 
         config_manager.save()
 
     def cancel(self):
         self.hide()
-        self.signals.test_audio_device.emit(False)
+        self.button_test_conflict.active = False
+        self.signals.test_audio_device.emit(False, "")
         self.signals.microphone_gain_changed.emit(config.audio.microphone_gain)
         self.signals.audio_input_device_change.emit(self._audio_inputs.get(config.audio.input_device, None))
         self.signals.audio_output_device_change.emit(self._audio_outputs.get(config.audio.output_device, None))
+        self.signals.audio_output_device_speaker_change.emit(
+            self._audio_outputs.get(config.audio.output_device_speaker, None))
         self.signals.ptt_press_freq_changed.emit(config.audio.ptt_press_freq)
         self.signals.ptt_release_freq_changed.emit(config.audio.ptt_release_freq)
         self.signals.ptt_volume_changed.emit(config.audio.ptt_volume)
+        self.signals.conflict_volume_changed.emit(config.audio.conflict_volume)
+
+    def handle_connect_status_change(self, status: ConnectionState) -> None:
+        match status:
+            case ConnectionState.CONNECTING:
+                self.button_test_headphone.active = False
+                self.button_test_speaker.active = False
+                self.button_test_conflict.active = False
+                self.button_test_headphone.setEnabled(False)
+                self.button_test_speaker.setEnabled(False)
+                self.button_test_conflict.setEnabled(False)
+                self.signals.test_audio_device.emit(False, "")
+                self.button_ok.setEnabled(True)
+                self.button_apply.setEnabled(True)
+                self.button_cancel.setEnabled(True)
+            case ConnectionState.DISCONNECTED:
+                self.button_test_headphone.setEnabled(True)
+                self.button_test_speaker.setEnabled(True)
+                self.button_test_conflict.setEnabled(True)

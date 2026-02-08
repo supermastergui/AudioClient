@@ -8,7 +8,9 @@ from .stream import InputAudioSteam, OutputAudioSteam
 
 
 class AudioDeviceTester:
-    def __init__(self, signals: AudioClientSignals, audio: PyAudio, encoder: OpusEncoder, decoder: OpusDecoder):
+    def __init__(self, signals: AudioClientSignals, audio: PyAudio, encoder: OpusEncoder, decoder: OpusDecoder, /):
+        super().__init__()
+        self.active = False
         self.input_stream = InputAudioSteam(audio, encoder)
         self.output_stream = OutputAudioSteam(audio, decoder)
         self.input_stream.on_encoded_audio = self._on_encode_audio
@@ -32,10 +34,12 @@ class AudioDeviceTester:
     def _on_encode_audio(self, data: bytes):
         self.output_stream.play_encoded_audio(data)
 
-    def start_test(self, input_arg: SteamArgs, output_arg: SteamArgs):
+    def start(self, input_arg: SteamArgs, output_arg: SteamArgs):
+        self.active = True
         self.input_stream.start(input_arg)
         self.output_stream.start(output_arg)
 
-    def stop_test(self):
+    def stop(self):
         self.input_stream.stop()
         self.output_stream.stop()
+        self.active = False

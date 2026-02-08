@@ -1,5 +1,7 @@
 <RCC>
   <qresource prefix="icon">
+    <file alias="speaker">icon/speaker.svg</file>
+    <file alias="headphone">icon/headphone.svg</file>
     <file alias="logo">icon/Logo.png</file>
     <file alias="setting">icon/settings.svg</file>
     <file alias="window">icon/window.svg</file>
