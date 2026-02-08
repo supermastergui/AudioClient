@@ -49,11 +49,11 @@ class LoginWindow(QWidget, Ui_LoginWindow):
             config_manager.save()
 
     def login(self) -> None:
-        logger.trace("Logging in application")
+        logger.debug("LoginWindow > logging in")
         username = get_line_edit_data(self.line_edit_account, str)
         password = get_line_edit_data(self.line_edit_password, str)
         if username is None or password is None:
-            logger.error(f"Account or password not provided")
+            logger.error(f"LoginWindow > account or password not provided")
             QMessageBox.critical(self, "参数错误", "请输入账号和密码")
             return
 
@@ -61,7 +61,7 @@ class LoginWindow(QWidget, Ui_LoginWindow):
                                     json=UserLoginRequest(username=username, password=password).model_dump())
 
         if response.status_code != 200:
-            logger.error(f"Login failed with status code {response.status_code}")
+            logger.error(f"LoginWindow > login failed with status code {response.status_code}")
             try:
                 QMessageBox.critical(self, "登陆失败", response.json().get("message", "发生未知错误"))
             except JSONDecodeError:
@@ -72,8 +72,7 @@ class LoginWindow(QWidget, Ui_LoginWindow):
 
         self.voice_client.update_client_info(data)
 
-        logger.success(f"Logged in successfully")
-        logger.trace(f"Logged in as {data.user.username}({data.user.cid:04}), token={data.token[:80]}...")
+        logger.success(f"LoginWindow > logged in successfully, user: {data.user.username}({data.user.cid:04})")
 
         self.remember_me_change(self.check_box_remember_me.isChecked())
         self.signals.login_success.emit()

@@ -112,7 +112,7 @@ class InputAudioSteam(AudioStream):
             # OPUS编码的音频采样率通常为48000Hz
             resampled_audio = resample(audio_data, self._sample_rate, opus_default_sample_rate)
             if len(resampled_audio) == 0:
-                logger.warning("empty data")
+                logger.debug("InputAudioSteam > got empty data from microphone, ignored")
                 return None, paContinue
             encoded_data = self._encoder.encode(resampled_audio)
             if encoded_data:
@@ -135,9 +135,9 @@ class InputAudioSteam(AudioStream):
             )
             self._active = True
             self._stream.start_stream()
-            logger.info("Started audio recording")
+            logger.debug("InputAudioSteam > started audio recording")
         except Exception as e:
-            logger.error(f"Failed to start recording: {e}")
+            logger.error(f"InputAudioSteam > failed to start recording: {e}")
 
     def stop(self):
         if self._stream is not None:
@@ -145,7 +145,7 @@ class InputAudioSteam(AudioStream):
             self._stream.close()
             self._stream = None
         self._active = False
-        logger.info("Stopped audio recording")
+        logger.debug("InputAudioSteam > stopped audio recording")
 
 
 class OutputAudioSteam(AudioStream):
@@ -179,7 +179,7 @@ class OutputAudioSteam(AudioStream):
         try:
             self._conflict_queue.put_nowait(wave.astype(float32))
         except Full:
-            logger.warning("Output conflict queue full, dropping beep")
+            logger.debug("OutputAudioSteam > output conflict queue full, dropping beep")
 
     def play_encoded_audio(self, encoded_data: bytes, conflict: bool = False, volume: float = 1.0):
         """放入一帧编码数据或冲突音；冲突时仅播放冲突音。"""
@@ -190,7 +190,7 @@ class OutputAudioSteam(AudioStream):
         try:
             self._queue.put_nowait(encoded_data)
         except Full:
-            logger.warning("Output queue full, dropping audio packet")
+            logger.debug("OutputAudioSteam > Output queue full, dropping audio packet")
 
     def _get_conflict_audio(self) -> tuple[NDArray[float32], bool]:
         try:
@@ -209,7 +209,9 @@ class OutputAudioSteam(AudioStream):
             # 音频输出的采样率通常为44100Hz
             resampled_audio = resample(audio_data, opus_default_sample_rate, self._sample_rate)
             if resampled_audio.size != frame_count:
-                logger.warning(f"Resampling audio with {frame_count} frames")
+                logger.warning(
+                    f"OutputAudioSteam > unmatched resampled audio size, expect {frame_count} but got {resampled_audio.size}"
+                )
             return resampled_audio.astype(float32), True
         except Empty:
             return zeros(0, dtype=float32), False
@@ -241,7 +243,7 @@ class OutputAudioSteam(AudioStream):
             )
             self._active = True
             self._stream.start_stream()
-            logger.info("Started audio playback")
+            logger.debug("OutputAudioSteam > started audio playback")
         except Exception as e:
             logger.error(f"Failed to start playback: {e}")
 
@@ -251,7 +253,7 @@ class OutputAudioSteam(AudioStream):
             self._stream.close()
             self._stream = None
         self._active = False
-        logger.info("Stopped audio playback")
+        logger.debug("OutputAudioSteam > stopped audio playback")
 
 
 class MixedOutputAudioStream(AudioStream):
@@ -289,7 +291,7 @@ class MixedOutputAudioStream(AudioStream):
         try:
             self._conflict_queue.put_nowait(wave.astype(float32))
         except Full:
-            logger.warning("Mixed output conflict queue full, dropping")
+            logger.debug("MixedOutputAudioStream > mixed output conflict queue full, dropping")
 
     def play_encoded_audio(self, transmitter_id: int, encoded_data: bytes,
                            conflict: bool = False, volume: float = 1.0) -> None:
@@ -303,7 +305,7 @@ class MixedOutputAudioStream(AudioStream):
                 frame = self._generator.generate_frame(self._frame_size) * volume * config.audio.conflict_volume
                 self._conflict_queue.put_nowait(frame.astype(float32))
             except Full:
-                logger.warning("Mixed output conflict queue full, dropping")
+                logger.debug("MixedOutputAudioStream > mixed output conflict queue full, dropping")
             return
         audio_data = self._decoder.decode(encoded_data)
         if audio_data is None:
@@ -312,7 +314,7 @@ class MixedOutputAudioStream(AudioStream):
             try:
                 self._transmitter_queues[transmitter_id].put_nowait(frame)
             except Full:
-                logger.warning(f"Transmitter {transmitter_id} queue full, dropping frame")
+                logger.debug(f"MixedOutputAudioStream >  transmitter {transmitter_id} queue full, dropping frame")
 
     def _get_conflict_audio(self) -> tuple[NDArray[float32], bool]:
         try:
@@ -358,7 +360,7 @@ class MixedOutputAudioStream(AudioStream):
             )
             self._active = True
             self._stream.start_stream()
-            logger.info("Started mixed audio playback")
+            logger.debug("MixedOutputAudioStream > started mixed audio playback")
         except Exception as e:
             logger.error(f"Failed to start mixed playback: {e}")
 
@@ -372,7 +374,7 @@ class MixedOutputAudioStream(AudioStream):
             self._stream = None
         self._active = False
         self._transmitter_queues.clear()
-        logger.info("Stopped mixed audio playback")
+        logger.debug("MixedOutputAudioStream > stopped mixed audio playback")
 
     def restart(self, args: SteamArgs):
         self.stop()

@@ -22,23 +22,23 @@ class HttpClientManger(QObject):
 
     @staticmethod
     def _log_request(request: Request):
-        logger.trace(f"Send http request: {request.method} {request.url} - Waiting for response")
+        logger.trace(f"HttpClientManger > send http request: {request.method} {request.url} - Waiting for response")
 
     @staticmethod
     def _log_response(response: Response):
         request = response.request
-        logger.trace(f"Received http response: {request.method} {request.url} - Status {response.status_code}")
+        logger.trace(f"HttpClientManger > received http response: {request.method} {request.url} - Status {response.status_code}")
 
     def _initialize(self):
         start_time = time()
-        logger.trace("Initializing http client")
+        logger.trace("HttpClientManger > initializing http client")
 
         self._http_client = Client(event_hooks={
             "request": [HttpClientManger._log_request],
             "response": [HttpClientManger._log_response]
         })
 
-        logger.trace(f"Initialize http client cost {time() - start_time:.6f}s")
+        logger.trace(f"HttpClientManger > initialize http client cost {time() - start_time:.6f}s")
 
         self.client_initialized.emit()
 

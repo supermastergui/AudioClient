@@ -8,7 +8,7 @@ from src.config import config
 def logger_init() -> None:
     level = config.log.level.upper()
     if level not in ["TRACE", "DEBUG", "INFO", "SUCCESS", "WARNING", "ERROR", "CRITICAL"]:
-        logger.error(f"Invalid log level: {level}")
+        logger.error(f"Logger > invalid log level: {level}")
         level = "INFO"
     debug_mode = level in ["TRACE", "DEBUG"]
     log_format = ("<green>{time:YYYY-MM-DD HH:mm:ss.SSS}</> <light-red>|</> "

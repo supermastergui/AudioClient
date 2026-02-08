@@ -74,11 +74,11 @@ class ConfigManager:
         self.config = Config.load_config()
         match config_version.check_version(Version(self.config.version)):
             case VersionType.MAJOR_UNMATCH | VersionType.MINOR_UNMATCH:
-                logger.critical(f"Config version error! Require {config_version} but got {self.config.version}")
+                logger.critical(f"Config > version error! Require {config_version} but got {self.config.version}")
                 self.config.version = config_version.version
                 self.save()
             case VersionType.PATCH_UNMATCH:
-                logger.warning(f"Config version not match! Require {config_version} but got {self.config.version}")
+                logger.warning(f"Config > version not match! Require {config_version} but got {self.config.version}")
         self._save_callbacks: list[SaveCallback] = []
 
     def register_save_callback(self, callback: SaveCallback) -> None:
@@ -86,15 +86,16 @@ class ConfigManager:
 
     def on_config_save(self, func: SaveCallback) -> SaveCallback:
         self.register_save_callback(func)
-        logger.debug(f"Config save callback {func.__name__} has been added")
+        logger.debug(f"Config > save callback {func.__name__} has been added")
         return func
 
     def save(self) -> None:
         result_list = [callback() for callback in self._save_callbacks]
         if not all(result_list):
-            logger.error("Some config save callback failed, rejecting save")
+            logger.error("Config > Some config save callback failed, rejecting save")
             logger.debug(
-                f"Failed callback list: {[callback for callback, result in zip(self._save_callbacks, result_list) if not result]}")
+                f"Config > Failed callback list: {[callback for callback, result in zip(self._save_callbacks, result_list) if not result]}"
+            )
             return
         with open(config_file, "w", encoding="utf-8") as f:
             safe_dump(self.config.model_dump(), f)

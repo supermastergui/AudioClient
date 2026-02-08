@@ -109,12 +109,12 @@ class ClientWindow(QWidget, Ui_ClientWindow):
                     return None
             return FSUIPCClient(lib_location)
         except FileNotFoundError:
-            logger.error("Cannot find libfsuipc")
+            logger.error("ClientWindow > cannot find libfsuipc")
             QMessageBox.critical(self, "Cannot load libfsuipc",
                                  f"Cannot found libfsuipc, download it and put it under {lib_path}")
             return None
         except Exception as e:
-            logger.error(f"Fail to load libfsuipc, {e}")
+            logger.error(f"ClientWindow > fail to load libfsuipc, {e}")
             QMessageBox.critical(self, "Cannot load libfsuipc",
                                  "Unknown error occurred while loading libfsuipc")
             return None
@@ -174,14 +174,14 @@ class ClientWindow(QWidget, Ui_ClientWindow):
         while True:
             res = self.fsuipc_client.open_fsuipc_client()
             if res.request_status:
-                logger.success("FSUIPC connection established")
+                logger.success("FSUIPC > connection established")
                 self.signals.show_log_message.emit("FSUIPC", "INFO", "FSUIPC连接成功")
                 self._fsuipc_client_connected.emit(True)
                 break
-            logger.error(f"FSUIPC connection failed, {retry + 1}/{max_retry} times")
+            logger.error(f"FSUIPC > connection failed, {retry + 1}/{max_retry} times")
             retry += 1
             if retry == max_retry:
-                logger.error(f"FSUIPC connection failed")
+                logger.error(f"FSUIPC > connection failed")
                 self.signals.show_log_message.emit("FSUIPC", "ERROR", "FSUIPC连接失败")
                 self._fsuipc_client_connected.emit(False)
                 break
@@ -295,7 +295,7 @@ class ClientWindow(QWidget, Ui_ClientWindow):
         while not self.thread_exit.is_set():
             response = http.client.get(urljoin(config.server.api_endpoint, "/api/clients"))
             if response.status_code != 200:
-                logger.error(f"Error while getting clients from server: {response.status_code}")
+                logger.error(f"ClientWindow > error while getting clients from server: {response.status_code}")
                 return
             data = OnlineClientsModel.model_validate_json(response.content)
             self._update_controller_signal.emit(data)
@@ -316,10 +316,10 @@ class ClientWindow(QWidget, Ui_ClientWindow):
                                            (res.frequency_flag & 0x40) != 0x40)
                 err_count = 0
             else:
-                logger.error(f"Error while receiving frequency from FSUIPC: {res.err_message}")
+                logger.error(f"FSUIPC > error while receiving frequency: {res.err_message}")
                 err_count += 1
             if err_count >= 3:
-                logger.error(f"Too many error received from FSUIPC: {err_count}, disconnecting")
+                logger.error(f"FSUIPC > too many error: {err_count}, disconnecting")
                 self.signals.show_log_message.emit("FSUIPC", "ERROR", "读取频率错误")
                 self._fsuipc_client_connected.emit(False)
                 break

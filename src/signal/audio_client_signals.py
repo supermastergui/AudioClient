@@ -15,9 +15,6 @@ class AudioClientSignals(QObject):
     logout_request = Signal()
     # emit when broadcast message
     broadcast_message = Signal(WebSocketMessage)
-    # emit to log message
-    # arguments: from | level | content
-    log_message = Signal(str, str, str)
     # emit when need show log message to user
     # arguments: from | level | content
     show_log_message = Signal(str, str, str)

@@ -45,9 +45,6 @@ class VoiceClient(QObject):
     def ptt_state(self, state: bool):
         self._sending = state
 
-    def _log_message(self, level: str, message: str):
-        self.signals.log_message.emit("VoiceClient", level, message)
-
     @property
     def client_ready(self) -> bool:
         return self._connection_state == ConnectionState.READY and self.client_info.client_valid
@@ -118,7 +115,7 @@ class VoiceClient(QObject):
             transmitter=transmitter_id,
             data=f"{frequency}:{'1' if rx else '0'}"
         )
-        self._log_message("INFO", f"Switch transmitter {transmitter_id} to {frequency / 1000:.3f}mHz receive flag {rx}")
+        logger.debug(f"VoiceClient > switch transmitter {transmitter_id} to {frequency / 1000:.3f}mHz receive flag {rx}")
         self._network.send_control_message(message)
 
     def send_text_message(self, target: str, message: str):
@@ -156,10 +153,10 @@ class VoiceClient(QObject):
 
     def _handle_control_message(self, message: ControlMessage):
         if message.type == MessageType.ERROR:
-            logger.error(f"Server error: {message.data}")
+            logger.error(f"VoiceClient > server error: {message.data}")
             self.signals.error_occurred.emit(message.data)
         elif message.type == MessageType.PONG:
-            logger.debug("Received pong from server")
+            logger.debug("VoiceClient > received pong from server")
         elif message.type == MessageType.MESSAGE:
             if message.data.startswith("SERVER:"):
                 if "Welcome" in message.data:
@@ -170,7 +167,7 @@ class VoiceClient(QObject):
                         self.client_info.main_frequency = int(data[-1])
                         self.client_info.is_atc = True
                     self._set_connection_state(ConnectionState.READY)
-                    self._log_message("INFO", "Identity verification passed")
+                    logger.success("VoiceClient > identity verification passed")
         elif message.type == MessageType.DISCONNECT:
             self.clear()
             self._set_connection_state(ConnectionState.DISCONNECTED)

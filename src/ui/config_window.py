@@ -1,6 +1,6 @@
 #  Copyright (c) 2025-2026 Half_nothing
 #  SPDX-License-Identifier: MIT
-from PySide6.QtCore import Qt, QTimer
+from PySide6.QtCore import Qt
 from loguru import logger
 
 from src.config import config, config_manager
@@ -101,33 +101,34 @@ class ConfigWindow(FramelessWidget, Ui_ConfigWindow):
     def audio_input_device_change(self, value: str):
         if not value:
             return
-        logger.trace(f"Audio input device change: {value}")
+        logger.debug(f"ConfigWindow > audio input device change: {value}")
         self.signals.audio_input_device_change.emit(self._audio_inputs.get(value, None))
 
     def audio_output_device_change(self, value: str):
         if not value:
             return
-        logger.trace(f"Audio output (headphone) device change: {value}")
+        logger.debug(f"ConfigWindow > audio output (headphone) device change: {value}")
         self.signals.audio_output_device_change.emit(self._audio_outputs.get(value, None))
 
     def audio_output_speaker_device_change(self, value: str):
         if not value:
             return
-        logger.trace(f"Audio output (speaker) device change: {value}")
+        logger.debug(f"ConfigWindow > audio output (speaker) device change: {value}")
         self.signals.audio_output_device_speaker_change.emit(self._audio_outputs.get(value, None))
 
     def audio_device_update(self, driver_name: str):
-        logger.trace(f"Audio device driver update to: {driver_name}")
+        logger.debug(f"ConfigWindow > audio device driver update to: {driver_name}")
         driver = self._audio_drivers.get(driver_name, None)
         if driver is None:
-            logger.warning(f"Audio device driver not found: {driver_name}")
+            logger.warning(f"ConfigWindow > audio device driver not found: {driver_name}")
             for name in self._audio_drivers:
                 if "WASAPI" in name:
                     driver = self._audio_drivers[name]
-                    logger.info(f"Default audio device driver found: {name}")
+                    logger.debug(f"ConfigWindow > default audio device driver found: {name}")
             if driver is None:
-                logger.error(f"No default audio device driver found")
+                logger.error(f"ConfigWindow > no default audio device driver found")
                 driver = self._audio_drivers[list(self._audio_drivers.keys())[0]]
+                logger.warning(f"ConfigWindow > use audio device driver: {driver.name}")
         self._audio_inputs, self._audio_outputs = get_device_info(driver.index)
 
         self.combo_box_audio_input.clear()

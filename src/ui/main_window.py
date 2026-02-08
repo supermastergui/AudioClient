@@ -27,8 +27,6 @@ class MainWindow(QMainWindow, Ui_MainWindow):
     def __init__(self, signals: AudioClientSignals, mouse_signals: MouseSignals,
                  keyboard_signals: KeyBoardSignals, joystick_signals: JoystickSignals) -> None:
         super().__init__()
-        logger.trace("Creating main window")
-
         self.setupUi(self)
         self.resize(300, 300)
         self.setMinimumSize(300, 300)

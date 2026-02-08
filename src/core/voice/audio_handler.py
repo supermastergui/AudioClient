@@ -116,7 +116,7 @@ class AudioHandler:
     def _input_device_change(self, info: Optional[DeviceInfo]):
         if info is None:
             info = DeviceInfo.model_validate(self._audio.get_default_input_device_info())
-        logger.info(f"input device change: {info}")
+        logger.debug(f"AudioHandler > input device change: {info}")
         self._input_args.device_index = info.index
         self._input_args.channel = max(info.maxInputChannels // 2, default_channels)
         self._input_args.sample_rate = int(info.defaultSampleRate)
@@ -132,7 +132,7 @@ class AudioHandler:
     def _output_device_change(self, info: Optional[DeviceInfo]):
         if info is None:
             info = DeviceInfo.model_validate(self._audio.get_default_output_device_info())
-        logger.info(f"output device change: {info}")
+        logger.debug(f"AudioHandler > output device (headphone) change: {info}")
         self._output_args.device_index = info.index
         self._output_args.channel = max(info.maxOutputChannels // 2, default_channels)
         self._output_args.sample_rate = int(info.defaultSampleRate)
@@ -151,7 +151,7 @@ class AudioHandler:
     def _output_device_speaker_change(self, info: Optional[DeviceInfo]):
         if info is None:
             info = DeviceInfo.model_validate(self._audio.get_default_output_device_info())
-        logger.info(f"output device (speaker) change: {info}")
+        logger.debug(f"AudioHandler > output device (speaker) change: {info}")
         self._output_args_speaker.device_index = info.index
         self._output_args_speaker.channel = max(info.maxOutputChannels // 2, default_channels)
         self._output_args_speaker.sample_rate = int(info.defaultSampleRate)
@@ -168,7 +168,7 @@ class AudioHandler:
     def add_transmitter(self, transmitter: Transmitter):
         stream = self._stream_for_target(transmitter.output_target)
         stream.add_transmitter(transmitter.id)
-        logger.info(f"transmitter added: {transmitter}")
+        logger.debug(f"AudioHandler > transmitter added: {transmitter}")
 
     def set_transmitter_output_target(self, transmitter: Transmitter) -> None:
         """将 transmitter 从当前输出切到另一路（耳机/扬声器）。"""
@@ -178,7 +178,7 @@ class AudioHandler:
         new_stream = self._stream_for_target(transmitter.output_target)
         old_stream.remove_transmitter(transmitter.id)
         new_stream.add_transmitter(transmitter.id)
-        logger.info(f"transmitter {transmitter.id} switched to {transmitter.output_target}")
+        logger.debug(f"AudioHandler > transmitter {transmitter.id} switched to {transmitter.output_target}")
 
     def play_encoded_audio(self, transmitter: Transmitter, encoded_data: bytes, conflict: bool = False):
         if transmitter.volume == 0 or not transmitter.receive_flag:

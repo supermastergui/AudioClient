@@ -4,7 +4,7 @@
 WebSocket 广播服务：供 ADF 等插件连接，接收并广播状态消息（如频率、PTT 等）。
 服务在独立线程的 asyncio 循环中运行，broadcast/stop 从主线程通过 run_coroutine_threadsafe 与服务器线程协作。
 """
-from asyncio import CancelledError, get_running_loop, new_event_loop, run_coroutine_threadsafe, set_event_loop, Event
+from asyncio import CancelledError, Event, get_running_loop, new_event_loop, run_coroutine_threadsafe, set_event_loop
 from typing import Optional
 
 from loguru import logger
@@ -42,16 +42,14 @@ class WebSocketBroadcastServer:
         client_id = id(websocket)
         address = f"{websocket.remote_address[0]}:{websocket.remote_address[1]}"
         self.client_info[websocket] = ClientInfo(client_id=client_id, address=address)
-        logger.info(f"New connection from {address}, ID: {client_id}")
-        logger.info(f"Current connection: {len(self.clients)}")
+        logger.info(f"WebSocket 客户端连接: {address}, ID: {client_id}, 当前连接数: {len(self.clients)}")
 
     def unregister(self, websocket: ServerConnection) -> None:
         if websocket in self.clients:
             client_id = self.client_info[websocket].client_id
             self.clients.remove(websocket)
             del self.client_info[websocket]
-            logger.info(f"Client disconnect: {client_id}")
-            logger.info(f"Current connection: {len(self.clients)}")
+            logger.debug(f"WebSocket 客户端断开: {client_id}, 当前连接数: {len(self.clients)}")
 
     def broadcast(self, message: WebSocketMessage):
         """从任意线程（通常 Qt 主线程）安全地向所有已连接客户端广播。"""
@@ -95,7 +93,7 @@ class WebSocketBroadcastServer:
             async for _ in websocket:
                 logger.trace(f"Received message from {websocket.remote_address}")
         except ConnectionClosed:
-            logger.info("Client disconnect")
+            logger.debug("WebSocket 连接已关闭")
         except Exception as e:
             logger.error(f"Fail to handle websocket connection: {e}")
         finally:
@@ -117,7 +115,7 @@ class WebSocketBroadcastServer:
             self.port,
             process_request=self._pre_progress_request
         )
-        logger.info(f"Websocket server listen on ws://{self.host}:{self.port}")
+        logger.info(f"WebSocket 服务已启动 ws://{self.host}:{self.port}")
         try:
             await self.server.serve_forever()
         except CancelledError:
@@ -126,8 +124,7 @@ class WebSocketBroadcastServer:
     async def _stop_async(self) -> None:
         """在服务器所在事件循环中关闭服务（仅供 stop() 内部调度）。"""
         if self.server is not None:
-            logger.info("Stop websocket server")
-            self.server_running.clear()
+            logger.info("WebSocket 服务已停止")
             self.server.close()
             await self.server.wait_closed()
             self.server = None
@@ -136,9 +133,4 @@ class WebSocketBroadcastServer:
         """从任意线程同步关闭 WebSocket 服务；若服务未启动则无操作。"""
         if self.loop is None or self.server is None:
             return
-        try:
-            run_coroutine_threadsafe(self._stop_async(), self.loop)
-        except TimeoutError:
-            logger.warning("WebSocket server stop timeout")
-        except Exception as e:
-            logger.error(f"WebSocket server stop error: {e}")
+        run_coroutine_threadsafe(self._stop_async(), self.loop)
