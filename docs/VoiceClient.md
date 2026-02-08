@@ -33,36 +33,44 @@
 └──────────────┴──────────────────────┴────────────────────────────┘
 ```
 
-- **NetworkHandler**：连接后发 JWT，TCP 按行解析 `ControlMessage`（如 SWITCH、Welcome、DISCONNECT），UDP 解析 `VoicePacket` 并通过 `signals.voice_data_received` 交给 VoiceClient。
-- **AudioHandler**：麦克风 → Opus 编码 → 通过 `on_encoded_audio` 回调交给 VoiceClient 发送；接收侧由 VoiceClient 根据频率找到对应 Transmitter，再调用 `AudioHandler.play_encoded_audio` 按 `transmitter.output_target` 送入耳机或扬声器混合流。
+- **NetworkHandler**：连接后发 JWT，TCP 按行解析 `ControlMessage`（如 SWITCH、Welcome、DISCONNECT），UDP 解析 `VoicePacket` 并通过
+  `signals.voice_data_received` 交给 VoiceClient。
+- **AudioHandler**：麦克风 → Opus 编码 → 通过 `on_encoded_audio` 回调交给 VoiceClient 发送；接收侧由 VoiceClient 根据频率找到对应
+  Transmitter，再调用 `AudioHandler.play_encoded_audio` 按 `transmitter.output_target` 送入耳机或扬声器混合流。
 
 ### 2.2 连接与就绪状态
 
 1. **连接**：`connect_to_server(host, tcp_port, udp_port)` 使用 `client_info.jwt_token` 建立 TCP + UDP，并发送 JWT 验证。
-2. **就绪**：服务端返回带 `Welcome` 的 MESSAGE 后，VoiceClient 解析呼号、启动音频（`_audio.start()`），并置 `connection_state = READY`。只有 **READY** 且 **client_info.client_valid** 时 `client_ready` 为 True。
+2. **就绪**：服务端返回带 `Welcome` 的 MESSAGE 后，VoiceClient 解析呼号、启动音频（`_audio.start()`），并置
+   `connection_state = READY`。只有 **READY** 且 **client_info.client_valid** 时 `client_ready` 为 True。
 3. **断开**：`disconnect_from_server()` 或收到 DISCONNECT 会清理 transmitters、停止音频并断开网络。
 
 ### 2.3 Transmitter 与频率
 
 - **Transmitter** 表示一个「逻辑电台」，包含：
-  - `id`：本机内唯一
-  - `frequency`：频率（如 122800 表示 122.800）
-  - `send_flag` / `receive_flag`：是否允许发/收
-  - `volume`：播放音量
-  - `output_target`：`"headphone"` 或 `"speaker"`，决定从哪路设备出声
+    - `id`：本机内唯一
+    - `frequency`：频率（如 122800 表示 122.800）
+    - `send_flag` / `receive_flag`：是否允许发/收
+    - `volume`：播放音量
+    - `output_target`：`"headphone"` 或 `"speaker"`，决定从哪路设备出声
 
-- **频率索引**：`_transmitters_by_frequency` 由 `_transmitters` 在添加/更新 transmitter 时重建，满足「同用户同频仅一台」的后端约定，收包时用 `packet.frequency` 做 O(1) 查找。
+- **频率索引**：`_transmitters_by_frequency` 由 `_transmitters` 在添加/更新 transmitter 时重建，满足「同用户同频仅一台」的后端约定，收包时用
+  `packet.frequency` 做 O(1) 查找。
 
 ### 2.4 发送语音（PTT）
 
 1. 用户按住 PTT → 通过信号设置 `_sending = True`，并指定当前发射通道（见下文的「当前发送通道」）。
-2. `AudioHandler` 的输入流在 PTT 激活时采集麦克风并编码，通过 **on_encoded_audio** 回调到 VoiceClient 的 `_send_voice_data`。
-3. `_send_voice_data` 仅在 `client_ready` 且 `_current_transmitter_id != -1` 时工作，用当前 transmitter 的 `id`、`frequency` 和 `client_info.cid/callsign` 组包，经 **NetworkHandler** 用 UDP 发出。
+2. `AudioHandler` 的输入流在 PTT 激活时采集麦克风并编码，通过 **on_encoded_audio** 回调到 VoiceClient 的
+   `_send_voice_data`。
+3. `_send_voice_data` 仅在 `client_ready` 且 `_current_transmitter_id != -1` 时工作，用当前 transmitter 的 `id`、
+   `frequency` 和 `client_info.cid/callsign` 组包，经 **NetworkHandler** 用 UDP 发出。
 
 ### 2.5 接收语音与冲突判定
 
-1. **NetworkHandler** 收到 UDP 语音包后解析为 `VoicePacket`（含 cid、transmitter、frequency、callsign、data），通过 **voice_data_received** 传给 VoiceClient。
-2. **注意**：服务端转发的是发送方原始数据，`packet.transmitter` 是**发送方**的 transmitter id，不能用来查本机。本机用 **packet.frequency** 在 `_transmitters_by_frequency` 中查找对应的 **本机 Transmitter**。
+1. **NetworkHandler** 收到 UDP 语音包后解析为 `VoicePacket`（含 cid、transmitter、frequency、callsign、data），通过 *
+   *voice_data_received** 传给 VoiceClient。
+2. **注意**：服务端转发的是发送方原始数据，`packet.transmitter` 是**发送方**的 transmitter id，不能用来查本机。本机用 *
+   *packet.frequency** 在 `_transmitters_by_frequency` 中查找对应的 **本机 Transmitter**。
 3. **冲突**：若「本机正在发送」或「该频率在约 5 帧时间内收到不同 callsign 的包」，则视为冲突，播放冲突音（可配置音量）；否则正常播放语音。
 4. 播放时根据该 Transmitter 的 `receive_flag`、`volume`、`output_target` 由 AudioHandler 送入对应混合流（耳机或扬声器）。
 
@@ -71,7 +79,8 @@
 当 UI 改变某个 Transmitter 的频率或收发状态时，应调用 `update_transmitter(transmitter)`：
 
 - 会重建频率索引并发送 **SWITCH** 信令（MessageType.SWITCH），携带 `frequency` 与 `receive_flag`（1/0），使服务端同步本机该通道的守听状态。
-- 若该 transmitter 的 `send_flag` 为 True，会同时更新 `_current_transmitter_id` 并发出 **update_current_frequency** 信号，供 UI 显示当前发射频率。
+- 若该 transmitter 的 `send_flag` 为 True，会同时更新 `_current_transmitter_id` 并发出 **update_current_frequency** 信号，供
+  UI 显示当前发射频率。
 
 ---
 
@@ -149,8 +158,10 @@ voice_client.update_transmitter(main)
 ### 3.5 当前发送通道（PTT 用）
 
 - 发送语音时，VoiceClient 使用 **当前发送通道** `_current_transmitter_id` 对应的 Transmitter 的 id、frequency、callsign 组包。
-- 当某个 Transmitter 的 `send_flag` 为 True 且调用 `update_transmitter(transmitter)` 时，会自动把该 transmitter 设为当前发送通道，并发出 `update_current_frequency`。
-- 因此 UI 应在「用户选择要发射的通道」时，将该通道的 `send_flag` 设为 True、其余为 False，然后对当前选中的 transmitter 调用 `update_transmitter`。
+- 当某个 Transmitter 的 `send_flag` 为 True 且调用 `update_transmitter(transmitter)` 时，会自动把该 transmitter
+  设为当前发送通道，并发出 `update_current_frequency`。
+- 因此 UI 应在「用户选择要发射的通道」时，将该通道的 `send_flag` 设为 True、其余为 False，然后对当前选中的 transmitter 调用
+  `update_transmitter`。
 
 ### 3.6 文本消息（可选）
 
@@ -175,16 +186,16 @@ voice_client.update_transmitter(main)
 
 ## 四、相关类型与信号速查
 
-| 类型/信号 | 说明 |
-|-----------|------|
-| `Transmitter` | 频率、id、send_flag、receive_flag、volume、output_target |
-| `ConnectionState` | DISCONNECTED / CONNECTING / CONNECTED / READY 等 |
-| `VoicePacket` | cid, transmitter（发送方 id）, frequency, callsign, data |
-| `connection_state_changed` | 连接状态变化 |
-| `voice_data_received` | 收到一条语音包（已在 VoiceClient 内处理，一般不需再连） |
-| `voice_data_sent` | 本机发出一条语音（可用于 UI 指示） |
-| `update_current_frequency` | 当前发射频率变化（int，如 122800） |
-| `error_occurred` | 错误信息（str） |
+| 类型/信号                      | 说明                                                  |
+|----------------------------|-----------------------------------------------------|
+| `Transmitter`              | 频率、id、send_flag、receive_flag、volume、output_target   |
+| `ConnectionState`          | DISCONNECTED / CONNECTING / CONNECTED / READY 等     |
+| `VoicePacket`              | cid, transmitter（发送方 id）, frequency, callsign, data |
+| `connection_state_changed` | 连接状态变化                                              |
+| `voice_data_received`      | 收到一条语音包（已在 VoiceClient 内处理，一般不需再连）                  |
+| `voice_data_sent`          | 本机发出一条语音（可用于 UI 指示）                                 |
+| `update_current_frequency` | 当前发射频率变化（int，如 122800）                              |
+| `error_occurred`           | 错误信息（str）                                           |
 
 ---
 
@@ -193,4 +204,5 @@ voice_client.update_transmitter(main)
 - **VoiceClient** = 网络（信令 + 语音包）+ 音频路由 + 本机 Transmitter/频率管理。
 - **收包**：用 `packet.frequency` 查本机 Transmitter，再按 `receive_flag`/`volume`/`output_target` 播放到耳机或扬声器。
 - **发包**：PTT 时由当前发送通道（`_current_transmitter_id`）对应的 Transmitter 提供 id/frequency/callsign 组包发送。
-- **使用**：创建并注入到各窗口，用 `add_transmitter` / `update_transmitter` / `set_transmitter_output_target` 管理通道，用 `connect_to_server` / `disconnect_from_server` 控制连接，通过 `signals` 监听状态与错误即可。
+- **使用**：创建并注入到各窗口，用 `add_transmitter` / `update_transmitter` / `set_transmitter_output_target` 管理通道，用
+  `connect_to_server` / `disconnect_from_server` 控制连接，通过 `signals` 监听状态与错误即可。

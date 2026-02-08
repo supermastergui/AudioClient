@@ -125,7 +125,6 @@ class ConnectWindow(QWidget, Ui_ConnectWindow):
             self.client_window.stop()
             self.connected = False
             self.button_connect.active = False
-            run(self.websocket.stop())
             return
 
         self.voice_client.connect_to_server(
@@ -160,6 +159,7 @@ class ConnectWindow(QWidget, Ui_ConnectWindow):
             self.button_connect.active = False
             self.button_exit.setEnabled(True)
             self.signals.broadcast_message.emit(WebSocketMessage.voice_connected_state(False))
+            self.websocket.stop()
             self.button_connect.setText("连接服务器")
             self.log_message("Network", "INFO", "断开连接")
             self.label_callsign_v.setText("----")
