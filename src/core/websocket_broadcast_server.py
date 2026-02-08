@@ -104,5 +104,6 @@ class WebSocketBroadcastServer:
 
     async def stop(self):
         if hasattr(self, 'server') and self.server is not None:
+            logger.info(f"Stop websocket server")
             self.server.close()
             await self.server.wait_closed()

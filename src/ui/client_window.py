@@ -1,12 +1,14 @@
 #  Copyright (c) 2025-2026 Half_nothing
 #  SPDX-License-Identifier: MIT
-
+from pathlib import Path
+from sys import platform
 from threading import Event, Thread
 from time import sleep
+from typing import Optional
 from urllib.parse import urljoin
 
 from PySide6.QtCore import Signal
-from PySide6.QtWidgets import QHeaderView, QTableWidget, QTableWidgetItem, QWidget
+from PySide6.QtWidgets import QHeaderView, QMessageBox, QTableWidget, QTableWidgetItem, QWidget
 from loguru import logger
 
 from src.config import config
@@ -15,12 +17,15 @@ from src.model import OnlineClientsModel
 from src.utils import http
 from src.utils import show_error
 from .form import Ui_ClientWindow
+from src.signal import AudioClientSignals
 
 
 class ClientWindow(QWidget, Ui_ClientWindow):
     _update_controller_signal = Signal(OnlineClientsModel)
+    _fsuipc_client_connected = Signal(bool)
+    _com_info_update = Signal(int, int, int, int, bool, bool)
 
-    def __init__(self, voice_client: VoiceClient, fsuipc_client: FSUIPCClient):
+    def __init__(self, signals: AudioClientSignals, voice_client: VoiceClient):
         super().__init__()
         self.setupUi(self)
 
@@ -33,16 +38,20 @@ class ClientWindow(QWidget, Ui_ClientWindow):
         self.sync_frequency.clicked.connect(self.sync_frequency_changed)
         self.sync_receive_flag.clicked.connect(self.sync_receive_flag_changed)
 
+        self.fsuipc_client: Optional[FSUIPCClient] = None
         self.voice_client = voice_client
-        self.fsuipc_client = fsuipc_client
+        self.signals = signals
         self.thread_exit = Event()
         self.com1_transmitter = Transmitter(122800, 0)
         self.com2_transmitter = Transmitter(121500, 1)
+        self.fsuipc_disable = False
+        self.fsuipc_connecting = False
 
-        self.label_com1_freq.setEnabled(False)
-        self.label_com2_freq.setEnabled(False)
-        self.button_com1_rx.setEnabled(False)
-        self.button_com2_rx.setEnabled(False)
+        self.label_com1_freq.setText("122.800")
+        self.label_com2_freq.setText("121.500")
+        self.sync_frequency.setEnabled(False)
+        self.sync_receive_flag.setEnabled(False)
+        self.button_connect.setEnabled(False)
 
         self.table_online_controllers.setColumnCount(2)
         self.table_online_controllers.setHorizontalHeaderLabels(["呼号", "频率"])
@@ -61,6 +70,101 @@ class ClientWindow(QWidget, Ui_ClientWindow):
 
         self.com1_volume.sliderMoved.connect(self.com1_volume_changed)
         self.com2_volume.sliderMoved.connect(self.com2_volume_changed)
+        self._fsuipc_client_connected.connect(self._fsuipc_connected)
+        self._com_info_update.connect(self.update_com_info)
+        self.button_connect.clicked.connect(self.connect_to_simulator)
+
+    def load_fsuipc_lib(self) -> Optional[FSUIPCClient]:
+        lib_path = Path.cwd() / "lib"
+        try:
+            match platform:
+                case 'win32':
+                    lib_location = lib_path / "libfsuipc.dll"
+                case 'darwin':
+                    lib_location = lib_path / "libfsuipc.dylib"
+                case 'linux':
+                    lib_location = lib_path / "libfsuipc.so"
+                case _:
+                    return None
+            return FSUIPCClient(lib_location)
+        except FileNotFoundError:
+            logger.error("Cannot find libfsuipc")
+            QMessageBox.critical(self, "Cannot load libfsuipc",
+                                 f"Cannot found libfsuipc, download it and put it under {lib_path}")
+            return None
+        except Exception as e:
+            logger.error(f"Fail to load libfsuipc, {e}")
+            QMessageBox.critical(self, "Cannot load libfsuipc",
+                                 "Unknown error occurred while loading libfsuipc")
+            return None
+
+    def start(self):
+        self.voice_client.add_transmitter(self.com1_transmitter)
+        self.voice_client.add_transmitter(self.com2_transmitter)
+        self.thread_exit.clear()
+        Thread(target=self._update_controller_list_thread, daemon=True).start()
+        self.fsuipc_client = self.load_fsuipc_lib()
+        if self.fsuipc_client is None:
+            self.fsuipc_disable = True
+            self.button_connect.setEnabled(False)
+            self.signals.show_log_message.emit("FSUIPC", "ERROR", "无法加载 libfsuipc.dll 文件")
+        else:
+            self.connect_to_simulator()
+
+    def connect_to_simulator(self):
+        if self.fsuipc_disable or self.fsuipc_connecting:
+            return
+        self.fsuipc_connecting = True
+        self.button_connect.setText("正在连接模拟器...")
+        self.button_connect.setEnabled(False)
+        self.label_fsuipc_v.setText("连接中")
+        Thread(target=self._connect_to_simulator, daemon=True).start()
+
+    def _fsuipc_connected(self, success: bool):
+        self.fsuipc_connecting = False
+        self.label_com1_freq.setEnabled(True)
+        self.label_com2_freq.setEnabled(True)
+        self.button_com1_rx.setEnabled(True)
+        self.button_com2_rx.setEnabled(True)
+        self.sync_frequency.setChecked(False)
+        self.sync_receive_flag.setChecked(False)
+        self.sync_frequency.setEnabled(success)
+        self.sync_receive_flag.setEnabled(success)
+
+        if success:
+            self.button_connect.setText("已连接")
+            self.label_fsuipc_v.setText("已连接")
+            self.sync_frequency.setChecked(True)
+            self.sync_frequency_changed(True)
+            Thread(target=self._receive_frequency, daemon=True).start()
+            return
+
+        self.button_connect.setText("连接模拟器")
+        self.button_connect.setEnabled(True)
+        self.label_fsuipc_v.setText("未连接")
+
+    def _connect_to_simulator(self):
+        if self.fsuipc_client is None:
+            self._fsuipc_client_connected.emit(False)
+            return
+        retry = 0
+        max_retry = 12
+        retry_delay = 5
+        while True:
+            res = self.fsuipc_client.open_fsuipc_client()
+            if res.request_status:
+                logger.success("FSUIPC connection established")
+                self.signals.show_log_message.emit("FSUIPC", "INFO", "FSUIPC连接成功")
+                self._fsuipc_client_connected.emit(True)
+                break
+            logger.error(f"FSUIPC connection failed, {retry + 1}/{max_retry} times")
+            retry += 1
+            if retry == max_retry:
+                logger.error(f"FSUIPC connection failed")
+                self.signals.show_log_message.emit("FSUIPC", "ERROR", "FSUIPC连接失败")
+                self._fsuipc_client_connected.emit(False)
+                break
+            sleep(retry_delay)
 
     def com1_volume_changed(self, value: int):
         self.com1_transmitter.volume = value / 100
@@ -76,18 +180,6 @@ class ClientWindow(QWidget, Ui_ClientWindow):
 
         self.table_online_controllers.setItem(row, 0, QTableWidgetItem(callsign))
         self.table_online_controllers.setItem(row, 1, QTableWidgetItem(f"{frequency / 1000:.3f}"))
-
-    def set_com1_frequency(self, frequency: int):
-        self.label_com1_freq.setText(f"{frequency / 1000:.3f}")
-        self.fsuipc_client.set_com1_frequency(frequency)
-        self.com1_transmitter.frequency = frequency
-        self.voice_client.update_transmitter(self.com1_transmitter)
-
-    def set_com2_frequency(self, frequency: int):
-        self.label_com2_freq.setText(f"{frequency / 1000:.3f}")
-        self.fsuipc_client.set_com2_frequency(frequency)
-        self.com2_transmitter.frequency = frequency
-        self.voice_client.update_transmitter(self.com2_transmitter)
 
     def com1_freq_tx_clicked(self):
         self.button_com2_tx.active = False
@@ -126,13 +218,6 @@ class ClientWindow(QWidget, Ui_ClientWindow):
             if key not in self._controller_frequency:
                 continue
             self._controller_frequency[key] = (self._controller_frequency[key][0], i)
-
-    def start(self):
-        self.voice_client.add_transmitter(self.com1_transmitter)
-        self.voice_client.add_transmitter(self.com2_transmitter)
-        self.thread_exit.clear()
-        Thread(target=self._update_controller_list_thread, daemon=True).start()
-        Thread(target=self._receive_frequency, daemon=True).start()
 
     def sync_frequency_changed(self, checked: bool):
         self.label_com1_freq.setEnabled(not checked)
@@ -192,21 +277,26 @@ class ClientWindow(QWidget, Ui_ClientWindow):
             sleep(15)
 
     def _receive_frequency(self):
+        if self.fsuipc_disable or self.fsuipc_connecting or self.fsuipc_client is None:
+            return
         err_count = 0
         while not self.thread_exit.is_set():
             res = self.fsuipc_client.get_frequency()
             if res.request_status:
-                self.update_com_info(res.frequency[0] // 1000,
-                                     res.frequency[1] // 1000,
-                                     res.frequency[2] // 1000,
-                                     res.frequency[3] // 1000,
-                                     (res.frequency_flag & 0x80) != 0x80,
-                                     (res.frequency_flag & 0x40) != 0x40)
+                self._com_info_update.emit(res.frequency[0] // 1000,
+                                           res.frequency[1] // 1000,
+                                           res.frequency[2] // 1000,
+                                           res.frequency[3] // 1000,
+                                           (res.frequency_flag & 0x80) != 0x80,
+                                           (res.frequency_flag & 0x40) != 0x40)
+                err_count = 0
             else:
                 logger.error(f"Error while receiving frequency from FSUIPC: {res.err_message}")
                 err_count += 1
             if err_count >= 3:
                 logger.error(f"Too many error received from FSUIPC: {err_count}, disconnecting")
+                self.signals.show_log_message.emit("FSUIPC", "ERROR", "读取频率错误")
+                self._fsuipc_client_connected.emit(False)
                 break
             sleep(1)
 

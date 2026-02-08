@@ -2,18 +2,15 @@
 #  SPDX-License-Identifier: MIT
 from asyncio import get_running_loop, new_event_loop, set_event_loop
 from datetime import datetime
-from pathlib import Path
-from sys import platform
 from threading import Thread
-from time import sleep, time
+from time import time
 
-from PySide6.QtCore import QTimer, Signal
+from PySide6.QtCore import QTimer
 from PySide6.QtWidgets import QMessageBox, QWidget
-from loguru import logger
 
 from src.config import config
 from src.constants import default_frame_time, default_frame_time_s
-from src.core import FSUIPCClient, VoiceClient, WebSocketBroadcastServer
+from src.core import VoiceClient, WebSocketBroadcastServer
 from src.model import ConnectionState, VoicePacket, WebSocketMessage
 from src.signal import AudioClientSignals
 from .client_window import ClientWindow
@@ -22,9 +19,6 @@ from .form import Ui_ConnectWindow
 
 
 class ConnectWindow(QWidget, Ui_ConnectWindow):
-    fsuipc_client_connected = Signal()
-    fsuipc_client_connect_fail = Signal()
-
     def __init__(self, signals: AudioClientSignals, voice_client: VoiceClient):
         super().__init__()
         self.setupUi(self)
@@ -32,10 +26,9 @@ class ConnectWindow(QWidget, Ui_ConnectWindow):
         self.voice_client = voice_client
         self.signals = signals
         self.connected = False
-        self.fsuipc_client = self.load_fsuipc_lib()
         self.active_transmitter: dict[str, tuple[float, int]] = {}
         self.controller_window = ControllerWindow(signals, voice_client)
-        self.client_window = ClientWindow(voice_client, self.fsuipc_client)
+        self.client_window = ClientWindow(signals, voice_client)
         self.windows.addWidget(QWidget())
         self.windows.setCurrentIndex(0)
 
@@ -59,35 +52,9 @@ class ConnectWindow(QWidget, Ui_ConnectWindow):
 
         self.button_connect.clicked.connect(self.connect_to_server)
         self.button_exit.clicked.connect(lambda: signals.logout_request.emit())
-        self.fsuipc_client_connected.connect(self.fsuipc_connect)
-        self.fsuipc_client_connect_fail.connect(self.fsuipc_connection_fail)
         self.voice_client.signals.voice_data_sent.connect(self.tx_send)
         self.voice_client.signals.voice_data_received.connect(self.rx_receive)
         self.signals.login_success.connect(self.login_success)
-
-    def load_fsuipc_lib(self) -> FSUIPCClient:
-        lib_path = Path.cwd() / "lib"
-        try:
-            match platform:
-                case 'win32':
-                    lib_location = lib_path / "libfsuipc.dll"
-                case 'darwin':
-                    lib_location = lib_path / "libfsuipc.dylib"
-                case 'linux':
-                    lib_location = lib_path / "libfsuipc.so"
-                case _:
-                    raise OSError("unknown platform")
-            return FSUIPCClient(lib_location)
-        except FileNotFoundError:
-            logger.error("Cannot find libfsuipc")
-            QMessageBox.critical(self, "Cannot load libfsuipc",
-                                 f"Cannot found libfsuipc, download it and put it under {lib_path}")
-            exit(1)
-        except Exception as e:
-            logger.error(f"Fail to load libfsuipc, {e}")
-            QMessageBox.critical(self, "Cannot load libfsuipc",
-                                 "Unknown error occurred while loading libfsuipc")
-            exit(1)
 
     def check_rx_timeout(self):
         current_time = time()
@@ -147,6 +114,8 @@ class ConnectWindow(QWidget, Ui_ConnectWindow):
             self.client_window.stop()
             self.connected = False
             self.button_connect.active = False
+            self.websocket.stop()
+            self.client_window.stop()
             return
 
         self.voice_client.connect_to_server(
@@ -171,7 +140,11 @@ class ConnectWindow(QWidget, Ui_ConnectWindow):
                 self.windows.setCurrentIndex(0)
                 self.signals.resize_window.emit(0, 0, True)
             else:
-                Thread(target=self.connect_to_simulator, daemon=True).start()
+                self.windows.removeWidget(self.windows.widget(0))
+                self.windows.addWidget(self.client_window)
+                self.windows.setCurrentIndex(0)
+                self.signals.resize_window.emit(740, 710, True)
+                self.client_window.start()
         elif state == ConnectionState.DISCONNECTED:
             self.connected = False
             self.button_connect.active = False
@@ -184,38 +157,6 @@ class ConnectWindow(QWidget, Ui_ConnectWindow):
             self.windows.addWidget(QWidget())
             self.windows.setCurrentIndex(0)
             self.signals.resize_window.emit(600, 300, True)
-
-    def fsuipc_connect(self):
-        self.windows.removeWidget(self.windows.widget(0))
-        self.windows.addWidget(self.client_window)
-        self.windows.setCurrentIndex(0)
-        self.client_window.start()
-
-    def fsuipc_connection_fail(self):
-        self.connect_to_server()
-        QMessageBox.critical(self, "无法连接到模拟器", "无法连接到模拟器, 请检查FSUIPC/XPUIPC是否正确安装")
-
-    def connect_to_simulator(self):
-        retry = 0
-        max_retry = 12
-        retry_delay = 5
-        while retry < max_retry:
-            res = self.fsuipc_client.open_fsuipc_client()
-            if res.request_status:
-                logger.success("FSUIPC connection established")
-                self.log_message("FSUIPC", "INFO", "FSUIPC连接成功")
-                break
-            logger.error(f"FSUIPC connection failed, {retry + 1}/{max_retry} times")
-            self.log_message("FSUIPC", "ERROR", f"FSUIPC连接失败, 第 {retry + 1}/{max_retry} 次尝试")
-            retry += 1
-            sleep(retry_delay)
-        if retry == max_retry:
-            logger.error(f"FSUIPC connection failed")
-            self.log_message("FSUIPC", "ERROR", "FSUIPC连接失败")
-            self.fsuipc_client_connect_fail.emit()
-            return
-        self.signals.resize_window.emit(740, 710, True)
-        self.fsuipc_client_connected.emit()
 
     def handle_connect_error(self, message: str) -> None:
         QMessageBox.critical(self, "连接服务器失败", message)

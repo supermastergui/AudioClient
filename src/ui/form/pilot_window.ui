@@ -7,7 +7,7 @@
     <x>0</x>
     <y>0</y>
     <width>602</width>
-    <height>340</height>
+    <height>376</height>
    </rect>
   </property>
   <property name="minimumSize">
@@ -50,83 +50,77 @@
       <string>通讯数据</string>
      </property>
      <layout class="QGridLayout" name="gridLayout_4">
-      <item row="1" column="1">
-       <widget class="QLabel" name="com1_standby_v">
-        <property name="text">
-         <string>---.---</string>
-        </property>
-       </widget>
-      </item>
-      <item row="3" column="0">
-       <widget class="QLabel" name="com2_active">
-        <property name="text">
-         <string>COM2</string>
-        </property>
-       </widget>
-      </item>
-      <item row="0" column="1">
-       <widget class="QLabel" name="com1_active_v">
-        <property name="text">
-         <string>---.---</string>
-        </property>
-       </widget>
-      </item>
-      <item row="4" column="0">
-       <widget class="QLabel" name="com2_standby">
-        <property name="text">
-         <string>COM2 Standby</string>
-        </property>
-       </widget>
-      </item>
-      <item row="1" column="0">
-       <widget class="QLabel" name="com1_standby">
-        <property name="text">
-         <string>COM1 Standby</string>
-        </property>
-       </widget>
-      </item>
-      <item row="7" column="0" colspan="2">
-       <widget class="QCheckBox" name="sync_receive_flag">
-        <property name="text">
-         <string>同步机模接收标志位</string>
-        </property>
-        <property name="checked">
-         <bool>true</bool>
-        </property>
-       </widget>
-      </item>
-      <item row="2" column="0">
-       <widget class="QLabel" name="com1_receive">
-        <property name="text">
-         <string>COM1 Receive</string>
-        </property>
-       </widget>
-      </item>
-      <item row="4" column="1">
+      <item row="5" column="1">
        <widget class="QLabel" name="com2_standby_v">
         <property name="text">
          <string>---.---</string>
         </property>
        </widget>
       </item>
-      <item row="6" column="0" colspan="2">
-       <widget class="QCheckBox" name="sync_frequency">
+      <item row="4" column="0">
+       <widget class="QLabel" name="com2_active">
         <property name="text">
-         <string>同步机模COM频率</string>
-        </property>
-        <property name="checked">
-         <bool>true</bool>
+         <string>COM2 Active</string>
         </property>
        </widget>
       </item>
-      <item row="0" column="0">
-       <widget class="QLabel" name="com1_active">
+      <item row="6" column="1">
+       <widget class="QLabel" name="com2_receive_v">
         <property name="text">
-         <string>COM1</string>
+         <string>否</string>
         </property>
        </widget>
       </item>
       <item row="3" column="1">
+       <widget class="QLabel" name="com1_receive_v">
+        <property name="text">
+         <string>否</string>
+        </property>
+       </widget>
+      </item>
+      <item row="6" column="0">
+       <widget class="QLabel" name="com2_receive">
+        <property name="text">
+         <string>COM2 Receive</string>
+        </property>
+       </widget>
+      </item>
+      <item row="1" column="1">
+       <widget class="QLabel" name="com1_active_v">
+        <property name="text">
+         <string>---.---</string>
+        </property>
+       </widget>
+      </item>
+      <item row="2" column="0">
+       <widget class="QLabel" name="com1_standby">
+        <property name="text">
+         <string>COM1 Standby</string>
+        </property>
+       </widget>
+      </item>
+      <item row="1" column="0">
+       <widget class="QLabel" name="com1_active">
+        <property name="text">
+         <string>COM1 Active</string>
+        </property>
+       </widget>
+      </item>
+      <item row="8" column="0" colspan="2">
+       <widget class="QCheckBox" name="sync_receive_flag">
+        <property name="text">
+         <string>同步机模接收标志位</string>
+        </property>
+       </widget>
+      </item>
+      <item row="0" column="0">
+       <widget class="QLabel" name="label_fsuipc">
+        <property name="text">
+         <string>模拟器状态</string>
+        </property>
+       </widget>
+      </item>
+      <item row="4" column="1">
        <widget class="QLabel" name="com2_active_v">
         <property name="text">
          <string>---.---</string>
@@ -134,23 +128,44 @@
        </widget>
       </item>
       <item row="5" column="0">
-       <widget class="QLabel" name="com2_receive">
+       <widget class="QLabel" name="com2_standby">
         <property name="text">
-         <string>COM2 Receive</string>
+         <string>COM2 Standby</string>
         </property>
        </widget>
       </item>
-      <item row="5" column="1">
-       <widget class="QLabel" name="com2_receive_v">
+      <item row="0" column="1">
+       <widget class="QLabel" name="label_fsuipc_v">
         <property name="text">
-         <string>否</string>
+         <string>未连接</string>
         </property>
        </widget>
       </item>
       <item row="2" column="1">
-       <widget class="QLabel" name="com1_receive_v">
+       <widget class="QLabel" name="com1_standby_v">
         <property name="text">
-         <string>否</string>
+         <string>---.---</string>
+        </property>
+       </widget>
+      </item>
+      <item row="3" column="0">
+       <widget class="QLabel" name="com1_receive">
+        <property name="text">
+         <string>COM1 Receive</string>
+        </property>
+       </widget>
+      </item>
+      <item row="7" column="0" colspan="2">
+       <widget class="QCheckBox" name="sync_frequency">
+        <property name="text">
+         <string>同步机模COM频率</string>
+        </property>
+       </widget>
+      </item>
+      <item row="9" column="0" colspan="2">
+       <widget class="QPushButton" name="button_connect">
+        <property name="text">
+         <string>连接模拟器</string>
         </property>
        </widget>
       </item>
