@@ -1,11 +1,13 @@
 #  Copyright (c) 2025-2026 Half_nothing
 #  SPDX-License-Identifier: MIT
 """发射机模型：表示一个逻辑电台（频率、收发标志、音量、输出设备）。"""
+from enum import Enum
 
-from typing import Literal
 
 # 输出目标：耳机 或 扬声器
-OutputTarget = Literal["headphone", "speaker"]
+class OutputTarget(Enum):
+    Headphone = "headphone"
+    Speaker = "speaker"
 
 
 class Transmitter:
@@ -13,7 +15,7 @@ class Transmitter:
 
     def __init__(self, frequency: int, transmitter_id: int, *,
                  tx: bool = False, rx: bool = False, volume: float = 1.0,
-                 output_target: OutputTarget = "headphone"):
+                 output_target: OutputTarget = OutputTarget.Headphone):
         self.id = transmitter_id
         self.frequency = frequency
         self.send_flag = tx

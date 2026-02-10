@@ -115,7 +115,7 @@ class VoiceClient(QObject):
             transmitter=transmitter_id,
             data=f"{frequency}:{'1' if rx else '0'}"
         )
-        logger.debug(f"VoiceClient > switch transmitter {transmitter_id} to {frequency / 1000:.3f}mHz receive flag {rx}")
+        logger.debug(f"VoiceClient > transmitter info update {transmitter}")
         self._network.send_control_message(message)
 
     def send_text_message(self, target: str, message: str):

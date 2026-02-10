@@ -40,3 +40,6 @@ class Version:
 
     def __str__(self) -> str:
         return self.version
+
+    def __eq__(self, __value: 'Version') -> bool:
+        return __value._major == self._major and __value._minor == self._minor and __value.patch == self._patch

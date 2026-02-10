@@ -43,7 +43,9 @@ class AudioConfig(BaseModel):
     ptt_press_freq: float = 1500.0
     ptt_release_freq: float = 1000.0
     ptt_volume: float = 1.0
+    ptt_play_device: str = "耳机"  # 提示音播放设备：耳机 / 扬声器
     conflict_volume: float = 1.0
+    conflict_play_device: str = "扬声器"  # 冲突音播放设备：耳机 / 扬声器
 
 
 class Config(BaseModel):
@@ -72,14 +74,11 @@ type SaveCallback = Callable[[], bool]
 class ConfigManager:
     def __init__(self):
         self.config = Config.load_config()
-        match config_version.check_version(Version(self.config.version)):
-            case VersionType.MAJOR_UNMATCH | VersionType.MINOR_UNMATCH:
-                logger.critical(f"Config > version error! Require {config_version} but got {self.config.version}")
-                self.config.version = config_version.version
-                self.save()
-            case VersionType.PATCH_UNMATCH:
-                logger.warning(f"Config > version not match! Require {config_version} but got {self.config.version}")
         self._save_callbacks: list[SaveCallback] = []
+        if Version(self.config.version) != config_version:
+            logger.warning(f"Config > version mismatch, expect {config_version.version} got {config_version}")
+            self.config.version = config_version.version
+            self.save()
 
     def register_save_callback(self, callback: SaveCallback) -> None:
         self._save_callbacks.append(callback)

@@ -18,7 +18,7 @@ from .audio_device_tester import AudioDeviceTester
 from .opus import OpusDecoder, OpusEncoder, SteamArgs
 from .stream import InputAudioSteam, MixedOutputAudioStream
 from .tone_generator import ToneGenerator
-from .transmitter import Transmitter
+from .transmitter import Transmitter, OutputTarget
 
 
 class AudioHandler:
@@ -94,14 +94,22 @@ class AudioHandler:
             wave = tone.generate_frame(self._device_tester.output_stream.frame_size) * 0.5 * self._beep_volume
             self._device_tester.output_stream.enqueue_conflict_wave(wave)
             return
-        wave = tone.generate_frame(self._mixed_output_headphone.frame_size) * 0.5 * self._beep_volume
-        self._mixed_output_headphone.enqueue_conflict_wave(wave)
+        stream = self._stream_for_play_device(config.audio.ptt_play_device)
+        wave = tone.generate_frame(stream.frame_size) * 0.5 * self._beep_volume
+        stream.enqueue_conflict_wave(wave)
 
     def _test_audio_device(self, state: bool, target: str):
         if state:
             if self._device_tester.active:
                 self._device_tester.stop()
-            if target == "headphone" or target == "conflict":
+            if target == "conflict":
+                out = (
+                    self._output_args
+                    if config.audio.conflict_play_device == "耳机"
+                    else self._output_args_speaker
+                )
+                self._device_tester.start(self._input_args, out)
+            elif target == "headphone":
                 self._device_tester.start(self._input_args, self._output_args)
             else:
                 self._device_tester.start(self._input_args, self._output_args_speaker)
@@ -161,9 +169,13 @@ class AudioHandler:
         if self._mixed_output_speaker.active:
             self._mixed_output_speaker.restart(self._output_args_speaker)
 
-    def _stream_for_target(self, output_target: str) -> MixedOutputAudioStream:
+    def _stream_for_target(self, output_target: OutputTarget) -> MixedOutputAudioStream:
         """按输出目标返回对应混合流。"""
-        return self._mixed_output_headphone if output_target == "headphone" else self._mixed_output_speaker
+        return self._mixed_output_headphone if output_target == OutputTarget.Headphone else self._mixed_output_speaker
+
+    def _stream_for_play_device(self, device: str) -> MixedOutputAudioStream:
+        """按配置项「播放设备」返回混合流，device 为 耳机 或 扬声器。"""
+        return self._mixed_output_speaker if device == "扬声器" else self._mixed_output_headphone
 
     def add_transmitter(self, transmitter: Transmitter):
         stream = self._stream_for_target(transmitter.output_target)
@@ -173,7 +185,7 @@ class AudioHandler:
     def set_transmitter_output_target(self, transmitter: Transmitter) -> None:
         """将 transmitter 从当前输出切到另一路（耳机/扬声器）。"""
         old_stream = self._stream_for_target(
-            "speaker" if transmitter.output_target == "headphone" else "headphone"
+            OutputTarget.Speaker if transmitter.output_target == OutputTarget.Headphone else OutputTarget.Headphone
         )
         new_stream = self._stream_for_target(transmitter.output_target)
         old_stream.remove_transmitter(transmitter.id)
@@ -184,7 +196,12 @@ class AudioHandler:
         if transmitter.volume == 0 or not transmitter.receive_flag:
             return
         volume = self._conflict_volume if conflict else transmitter.volume
-        stream = self._stream_for_target(transmitter.output_target)
+        stream = (
+            self._stream_for_play_device(config.audio.conflict_play_device)
+            if conflict
+            else self._stream_for_target(transmitter.output_target)
+        )
+        logger.trace(f"AudioHandler > frequency {transmitter.frequency} play on {transmitter.output_target}")
         stream.play_encoded_audio(
             transmitter.id, encoded_data, conflict, volume
         )

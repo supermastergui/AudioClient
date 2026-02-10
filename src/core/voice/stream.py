@@ -298,14 +298,15 @@ class MixedOutputAudioStream(AudioStream):
         """将一帧数据送入对应 transmitter 队列；冲突时生成冲突音送入冲突队列。"""
         if not self._active or self._frame_size <= 0:
             return
-        if transmitter_id not in self._transmitter_queues:
-            return
         if conflict:
             try:
-                frame = self._generator.generate_frame(self._frame_size) * volume * config.audio.conflict_volume
+                frame = self._generator.generate_frame(self._frame_size) * volume
                 self._conflict_queue.put_nowait(frame.astype(float32))
             except Full:
                 logger.debug("MixedOutputAudioStream > mixed output conflict queue full, dropping")
+            return
+        if transmitter_id not in self._transmitter_queues:
+            logger.trace(f"transmitter {transmitter_id} not in queue, dropping")
             return
         audio_data = self._decoder.decode(encoded_data)
         if audio_data is None:

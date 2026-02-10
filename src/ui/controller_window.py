@@ -3,7 +3,7 @@
 from PySide6.QtCore import Qt
 from PySide6.QtWidgets import QWidget
 
-from src.core import Transmitter, VoiceClient
+from src.core import OutputTarget, Transmitter, VoiceClient
 from src.model import ConnectionState
 from src.signal import AudioClientSignals
 from src.utils import clear_error, show_error
@@ -68,7 +68,7 @@ class ControllerWindow(QWidget, Ui_ControllerWindow):
         )
 
     def _on_output_target_change(self, transmitter: Transmitter, speaker: bool) -> None:
-        transmitter.output_target = "speaker" if speaker else "headphone"
+        transmitter.output_target = OutputTarget.Speaker if speaker else OutputTarget.Headphone
         if self.voice_client.client_ready:
             self.voice_client.set_transmitter_output_target(transmitter)
 

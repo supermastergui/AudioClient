@@ -7,6 +7,7 @@ from src.config import config, config_manager
 from src.model import ConnectionState, DeviceInfo
 from src.signal import AudioClientSignals
 from src.utils import get_device_info, get_host_api_info
+from src.utils.logger import logger_init
 from .component.frameless_widget import FramelessWidget
 from .form import Ui_ConfigWindow
 
@@ -53,6 +54,9 @@ class ConfigWindow(FramelessWidget, Ui_ConfigWindow):
         self.ptt_press_freq.valueChanged.connect(self.ptt_press_freq_change)
         self.ptt_release_freq.valueChanged.connect(self.ptt_release_freq_change)
         self.conflict_volume.sliderMoved.connect(self.conflict_volume_change)
+        for combo in (self.combo_box_ptt_play_device, self.combo_box_conflict_play_device):
+            if combo.count() == 0:
+                combo.addItems(["耳机", "扬声器"])
         self.signals.connection_state_changed.connect(
             self.handle_connect_status_change, Qt.ConnectionType.QueuedConnection
         )
@@ -182,6 +186,12 @@ class ConfigWindow(FramelessWidget, Ui_ConfigWindow):
         self.ptt_sound_value.setText(f"{config.audio.ptt_volume:.0%}")
         self.conflict_volume.setValue(int(config.audio.conflict_volume * 100))
         self.conflict_volume_v.setText(f"{config.audio.conflict_volume * 100:.0f}%")
+        self.combo_box_ptt_play_device.setCurrentText(
+            config.audio.ptt_play_device if config.audio.ptt_play_device in ("耳机", "扬声器") else "耳机"
+        )
+        self.combo_box_conflict_play_device.setCurrentText(
+            config.audio.conflict_play_device if config.audio.conflict_play_device in ("耳机", "扬声器") else "耳机"
+        )
 
         return True
 
@@ -204,9 +214,12 @@ class ConfigWindow(FramelessWidget, Ui_ConfigWindow):
         config.audio.ptt_press_freq = self.ptt_press_freq.value()
         config.audio.ptt_release_freq = self.ptt_release_freq.value()
         config.audio.ptt_volume = self.ptt_sound.value() / 100
+        config.audio.ptt_play_device = self.combo_box_ptt_play_device.currentText()
         config.audio.conflict_volume = self.conflict_volume.value() / 100
+        config.audio.conflict_play_device = self.combo_box_conflict_play_device.currentText()
 
         config_manager.save()
+        logger_init()
 
     def cancel(self):
         self.hide()

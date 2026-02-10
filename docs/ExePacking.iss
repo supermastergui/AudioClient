@@ -4,7 +4,7 @@
 ; Download Inno Setup: https://jrsoftware.org/isdl.php
 
 #define MyAppName "AudioClient"
-#define MyAppVersion "1.2.0"
+#define MyAppVersion "1.2.1"
 #define AppCopyright "Copyright © 2025-2026 Half_nothing"
 #define MyAppPublisher "Half_nothing"
 #define MyAppPublisherURL "https://www.half-nothing.cn/"
@@ -39,14 +39,13 @@ ChangesEnvironment  =false
 Name: "chinese_simplified";  MessagesFile: "ChineseSimplified.isl"
 Name: "chinese_traditional";  MessagesFile: "ChineseTraditional.isl"
 Name: "english";  MessagesFile: "compiler:Default.isl"
-Name: "japanese"; MessagesFile: "compiler:Languages\Japanese.isl"
 
 [Tasks]
 Name: "desktopicon"; Description: "{cm:CreateDesktopIcon}"; GroupDescription: "{cm:AdditionalIcons}"
 
 [Files]
 Source: "..\dist\main.dist\*"; DestDir: "{app}"; Flags: ignoreversion recursesubdirs createallsubdirs
-Source: "..\dist\config.yaml"; DestDir: "{app}"; Flags: ignoreversion onlyifdoesntexist
+Source: "..\dist\config.yaml"; DestDir: "{app}"; Flags: ignoreversion
 Source: "..\LICENSE"; DestDir: "{app}"; Flags: ignoreversion
 
 [Icons]
