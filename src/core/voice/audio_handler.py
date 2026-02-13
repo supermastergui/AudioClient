@@ -30,12 +30,14 @@ class AudioHandler:
         self._output_args_speaker = SteamArgs(default_sample_rate, default_channels, None, default_frame_size)
 
         self._encoder = OpusEncoder(self._input_args)
-        self._decoder = OpusDecoder(self._output_args)
+        self._decoder_headphone = OpusDecoder(self._output_args)
+        self._decoder_speaker = OpusDecoder(self._output_args_speaker)
+        self._decoder_tester = OpusDecoder(self._output_args)
 
         self._audio = PyAudio()
         self._input_stream = InputAudioSteam(self._audio, self._encoder)
-        self._mixed_output_headphone = MixedOutputAudioStream(self._audio, self._decoder)
-        self._mixed_output_speaker = MixedOutputAudioStream(self._audio, self._decoder)
+        self._mixed_output_headphone = MixedOutputAudioStream(self._audio, self._decoder_headphone)
+        self._mixed_output_speaker = MixedOutputAudioStream(self._audio, self._decoder_speaker)
 
         # 用于 PTT 提示音的专用 ToneGenerator（按下/松开各一个），
         # 在此处创建并在输出设备变更时更新采样率。
@@ -43,7 +45,7 @@ class AudioHandler:
         self._ptt_release_tone = ToneGenerator(default_sample_rate, config.audio.ptt_release_freq, 0.3)
         self._beep_volume = config.audio.ptt_volume
 
-        self._device_tester = AudioDeviceTester(audio_signal, self._audio, self._encoder, self._decoder)
+        self._device_tester = AudioDeviceTester(audio_signal, self._audio, self._encoder, self._decoder_tester)
         self._conflict_volume = config.audio.conflict_volume
         self._conflict_test_timer = QTimer()
         self._conflict_test_timer.setInterval(default_frame_time)
@@ -108,11 +110,12 @@ class AudioHandler:
                     if config.audio.conflict_play_device == "耳机"
                     else self._output_args_speaker
                 )
-                self._device_tester.start(self._input_args, out)
             elif target == "headphone":
-                self._device_tester.start(self._input_args, self._output_args)
+                out = self._output_args
             else:
-                self._device_tester.start(self._input_args, self._output_args_speaker)
+                out = self._output_args_speaker
+            self._decoder_tester.update(out)  # 与输出流声道/帧长一致
+            self._device_tester.start(self._input_args, out)
             if target == "conflict":
                 self._conflict_test_timer.start()
         else:
@@ -147,7 +150,7 @@ class AudioHandler:
         self._output_args.frame_size = int(
             default_frame_size * self._output_args.sample_rate / opus_default_sample_rate
         ) * self._output_args.channel
-        self._decoder.update(self._output_args)
+        self._decoder_headphone.update(self._output_args)
         self._ptt_press_tone.update_sample_rate(self._output_args.sample_rate)
         self._ptt_release_tone.update_sample_rate(self._output_args.sample_rate)
         self._device_tester.update_output_device(self._output_args)
@@ -166,6 +169,7 @@ class AudioHandler:
         self._output_args_speaker.frame_size = int(
             default_frame_size * self._output_args_speaker.sample_rate / opus_default_sample_rate
         ) * self._output_args_speaker.channel
+        self._decoder_speaker.update(self._output_args_speaker)
         if self._mixed_output_speaker.active:
             self._mixed_output_speaker.restart(self._output_args_speaker)
 

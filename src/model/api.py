@@ -48,6 +48,10 @@ class UserLoginResponse(ApiResponse[UserLoginModel]):
     pass
 
 
+class UserRefreshResponse(ApiResponse[UserLoginModel]):
+    pass
+
+
 class OnlinePilotModel(BaseModel):
     cid: int
     callsign: str

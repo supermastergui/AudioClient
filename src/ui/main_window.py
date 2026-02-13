@@ -3,18 +3,19 @@
 
 from typing import Optional
 
-from PySide6.QtCore import Qt
+from PySide6.QtCore import Qt, QTimer
 from PySide6.QtGui import QScreen
 from PySide6.QtWidgets import QApplication, QMainWindow, QMessageBox
 from loguru import logger
 
 from src.config import config, config_manager
-from src.constants import app_name, app_title
+from src.constants import app_name, app_title, session_refresh_interval_minutes
 from src.core import VoiceClient
 from src.model import ConnectionState
 from src.signal import AudioClientSignals, JoystickSignals, KeyBoardSignals, MouseSignals
 from src.thread import JoystickListenerThread, KeyboardListenerThread, MouseListenerThread
 from src.utils import http
+from src.utils.auth import refresh_session
 from .component import PTTButton
 from .config_window import ConfigWindow
 from .connect_window import ConnectWindow
@@ -41,6 +42,7 @@ class MainWindow(QMainWindow, Ui_MainWindow):
         self.login: Optional[LoginWindow] = None
         self.config: Optional[ConfigWindow] = None
         self.ptt_button: Optional[PTTButton] = None
+        self._refresh_timer = QTimer()
 
         self.loading = LoadingWindow()
         self.loading.setObjectName(u"loading")
@@ -65,16 +67,32 @@ class MainWindow(QMainWindow, Ui_MainWindow):
         signals.show_config_windows.connect(self.show_config_window)
         signals.logout_request.connect(self.logout_request)
         signals.resize_window.connect(self.resize_window)
+        self._refresh_timer.timeout.connect(self._do_refresh)
 
     def logout_request(self) -> None:
+        self._refresh_timer.stop()
         if self.voice_client is not None:
             self.voice_client.client_info.reset()
         self.windows.setCurrentIndex(1)
         self.resize_window(600, 600, True)
 
+    def _do_refresh(self) -> None:
+        if self.voice_client is None:
+            return
+        flush_token = self.voice_client.client_info.flush_token
+        if not flush_token:
+            return
+        data = refresh_session(flush_token)
+        if data is None:
+            return
+        self.voice_client.update_client_info(data)
+        logger.debug("MainWindow > session refreshed")
+
     def login_success(self) -> None:
         self.resize_window(600, 300, True)
         self.windows.setCurrentIndex(2)
+        if session_refresh_interval_minutes > 0:
+            self._refresh_timer.start(session_refresh_interval_minutes * 60 * 1000)
 
     def config_update(self) -> bool:
         if self.ptt_button is None:

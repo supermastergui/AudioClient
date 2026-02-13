@@ -12,7 +12,7 @@ from PySide6.QtWidgets import QHeaderView, QMessageBox, QTableWidget, QTableWidg
 from loguru import logger
 
 from src.config import config
-from src.core import Transmitter, VoiceClient, FSUIPCClient
+from src.core import OutputTarget, Transmitter, VoiceClient, FSUIPCClient
 from src.model import OnlineClientsModel
 from src.utils import http
 from src.utils import show_error
@@ -91,7 +91,7 @@ class ClientWindow(QWidget, Ui_ClientWindow):
         )
 
     def _on_output_target_change(self, transmitter: Transmitter, speaker: bool) -> None:
-        transmitter.output_target = "speaker" if speaker else "headphone"
+        transmitter.output_target = OutputTarget.Speaker if speaker else OutputTarget.Headphone
         if self.voice_client.client_ready:
             self.voice_client.set_transmitter_output_target(transmitter)
 
@@ -121,7 +121,11 @@ class ClientWindow(QWidget, Ui_ClientWindow):
 
     def start(self):
         self.voice_client.add_transmitter(self.com1_transmitter)
+        self.signals.show_log_message.emit("ClientWindow", "INFO",
+                                           f"COM1注册成功，{self.com1_transmitter.output_target}")
         self.voice_client.add_transmitter(self.com2_transmitter)
+        self.signals.show_log_message.emit("ClientWindow", "INFO",
+                                           f"COM2注册成功，{self.com2_transmitter.output_target}")
         self.thread_exit.clear()
         Thread(target=self._update_controller_list_thread, daemon=True).start()
         self.fsuipc_client = self.load_fsuipc_lib()

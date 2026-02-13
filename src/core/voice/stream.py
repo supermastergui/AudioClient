@@ -9,7 +9,7 @@ from queue import Empty, Full, Queue
 from typing import Callable, Optional
 
 from loguru import logger
-from numpy import float32, frombuffer, int16, zeros
+from numpy import float32, frombuffer, int16, tanh, zeros
 from numpy.typing import NDArray
 from pyaudio import PyAudio, Stream, paContinue, paFloat32, paInt16
 from soxr import resample  # type: ignore
@@ -158,6 +158,7 @@ class OutputAudioSteam(AudioStream):
         self._conflict_queue: Queue[NDArray[float32]] = Queue()
         self._generator = ToneGenerator()
         self._frame_size = 0
+        self._channel = 1
         self._volume = 1.0
 
     @property
@@ -192,13 +193,22 @@ class OutputAudioSteam(AudioStream):
         except Full:
             logger.debug("OutputAudioSteam > Output queue full, dropping audio packet")
 
-    def _get_conflict_audio(self) -> tuple[NDArray[float32], bool]:
+    def _get_conflict_audio(self, sample_count: int) -> tuple[NDArray[float32], bool]:
         try:
-            return self._conflict_queue.get_nowait(), True
+            data = self._conflict_queue.get_nowait()
+            n = data.size
+            if n != sample_count:
+                if n >= sample_count:
+                    data = data[:sample_count].astype(float32)
+                else:
+                    out = zeros(sample_count, dtype=float32)
+                    out[:n] = data
+                    data = out
+            return data, True
         except Empty:
             return zeros(0, dtype=float32), False
 
-    def _get_audio(self, frame_count: int) -> tuple[NDArray[float32], bool]:
+    def _get_audio(self, sample_count: int) -> tuple[NDArray[float32], bool]:
         try:
             encoded_data = self._queue.get_nowait()
             audio_data = self._decoder.decode(encoded_data)
@@ -208,28 +218,38 @@ class OutputAudioSteam(AudioStream):
             # OPUS编码的音频采样率通常为48000Hz
             # 音频输出的采样率通常为44100Hz
             resampled_audio = resample(audio_data, opus_default_sample_rate, self._sample_rate)
-            if resampled_audio.size != frame_count:
+            n = resampled_audio.size
+            if n != sample_count:
                 logger.warning(
-                    f"OutputAudioSteam > unmatched resampled audio size, expect {frame_count} but got {resampled_audio.size}"
+                    f"OutputAudioSteam > unmatched resampled audio size, expect {sample_count} but got {n}"
                 )
+                if n > sample_count:
+                    resampled_audio = resampled_audio[:sample_count].copy()
+                else:
+                    out = zeros(sample_count, dtype=float32)
+                    out[:n] = resampled_audio
+                    resampled_audio = out
             return resampled_audio.astype(float32), True
         except Empty:
             return zeros(0, dtype=float32), False
 
     def _callback(self, _, frame_count: int, __, ___) -> tuple[bytes, int]:
-        data, success = self._get_conflict_audio()
+        # PyAudio 的 frame_count 为帧数，每帧含 channel 个样本，需返回 frame_count * channel 个样本
+        sample_count = frame_count * self._channel
+        data, success = self._get_conflict_audio(sample_count)
         if success:
             return (data * self._volume).clip(-1.0, 1.0).tobytes(), paContinue
-        data, success = self._get_audio(frame_count)
+        data, success = self._get_audio(sample_count)
         if success:
             return (data * self._volume).clip(-1.0, 1.0).tobytes(), paContinue
-        return zeros(frame_count, dtype=float32).tobytes(), paContinue
+        return zeros(sample_count, dtype=float32).tobytes(), paContinue
 
     def start(self, args: SteamArgs):
         if self._active:
             return
         self._generator.update_sample_rate(args.sample_rate)
         self._frame_size = args.frame_size
+        self._channel = args.channel
         self._sample_rate = args.sample_rate
         try:
             self._stream = self._audio.open(
@@ -238,7 +258,7 @@ class OutputAudioSteam(AudioStream):
                 rate=args.sample_rate,
                 output=True,
                 output_device_index=args.device_index,
-                frames_per_buffer=args.frame_size,
+                frames_per_buffer=args.frame_size // args.channel,
                 stream_callback=self._callback
             )
             self._active = True
@@ -269,6 +289,7 @@ class MixedOutputAudioStream(AudioStream):
         self._conflict_queue: Queue[NDArray[float32]] = Queue()
         self._generator = ToneGenerator()
         self._frame_size = 0
+        self._channel = 1
         self._sample_rate = default_sample_rate
         self._stream: Optional[Stream] = None
 
@@ -306,7 +327,7 @@ class MixedOutputAudioStream(AudioStream):
                 logger.debug("MixedOutputAudioStream > mixed output conflict queue full, dropping")
             return
         if transmitter_id not in self._transmitter_queues:
-            logger.trace(f"transmitter {transmitter_id} not in queue, dropping")
+            logger.trace(f"MixedOutputAudioStream > transmitter {transmitter_id} not in queue, dropping")
             return
         audio_data = self._decoder.decode(encoded_data)
         if audio_data is None:
@@ -317,30 +338,51 @@ class MixedOutputAudioStream(AudioStream):
             except Full:
                 logger.debug(f"MixedOutputAudioStream >  transmitter {transmitter_id} queue full, dropping frame")
 
-    def _get_conflict_audio(self) -> tuple[NDArray[float32], bool]:
+    def _get_conflict_audio(self, frame_count: int) -> tuple[NDArray[float32], bool]:
+        """取一帧冲突音，不足或超出 frame_count 时补零或截断。"""
         try:
-            return self._conflict_queue.get_nowait(), True
+            data = self._conflict_queue.get_nowait()
+            n = data.size
+            if n != frame_count:
+                logger.warning(
+                    f"MixedOutputAudioStream > conflict audio size mismatch, expect {frame_count} but got {n}"
+                )
+                if n >= frame_count:
+                    data = data[:frame_count].astype(float32)
+                else:
+                    out = zeros(frame_count, dtype=float32)
+                    out[:n] = data.astype(float32)
+                    data = out
+            return data, True
         except Empty:
             return zeros(0, dtype=float32), False
 
     def _mix_one_frame(self, frame_count: int) -> NDArray[float32]:
+        """多路叠加后经 tanh 软限幅；每路帧与 frame_count 不一致时截断或补零。"""
         mixed = zeros(frame_count, dtype=float32)
         for q in self._transmitter_queues.values():
             try:
                 frame = q.get_nowait()
-                if frame.size == frame_count:
-                    mixed += frame
-                elif frame.size > 0:
+                n = frame.size
+                if n != frame_count:
+                    logger.warning(
+                        f"MixedOutputAudioStream > transmitter frame size mismatch, expect {frame_count} but got {n}"
+                    )
+                if n >= frame_count:
                     mixed += frame[:frame_count]
+                elif n > 0:
+                    mixed[:n] += frame.astype(float32)
             except Empty:
                 pass
-        return mixed.clip(-1.0, 1.0)
+        return tanh(mixed).astype(float32)
 
     def _callback(self, _, frame_count: int, __, ___) -> tuple[bytes, int]:
-        data, has_conflict = self._get_conflict_audio()
+        # PyAudio 的 frame_count 为帧数，每帧含 channel 个样本，需返回 frame_count * channel 个样本
+        sample_count = frame_count * self._channel
+        data, has_conflict = self._get_conflict_audio(sample_count)
         if has_conflict:
             return data.tobytes(), paContinue
-        mixed = self._mix_one_frame(frame_count)
+        mixed = self._mix_one_frame(sample_count)
         return mixed.tobytes(), paContinue
 
     def start(self, args: SteamArgs):
@@ -348,6 +390,7 @@ class MixedOutputAudioStream(AudioStream):
             return
         self._generator.update_sample_rate(args.sample_rate)
         self._frame_size = args.frame_size
+        self._channel = args.channel
         self._sample_rate = args.sample_rate
         try:
             self._stream = self._audio.open(
@@ -356,7 +399,7 @@ class MixedOutputAudioStream(AudioStream):
                 rate=args.sample_rate,
                 output=True,
                 output_device_index=args.device_index,
-                frames_per_buffer=args.frame_size,
+                frames_per_buffer=args.frame_size // args.channel,
                 stream_callback=self._callback,
             )
             self._active = True

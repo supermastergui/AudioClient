@@ -265,9 +265,17 @@ class ControllerWindow(QWidget, Ui_ControllerWindow):
             self.clear()
             self._main_transmitter.frequency = self.voice_client.client_info.main_frequency
             self.voice_client.add_transmitter(self._main_transmitter)
+            self.signals.show_log_message.emit("ControllerWindow", "INFO",
+                                               f"主频率注册成功，{self._main_transmitter.output_target}")
             self.voice_client.add_transmitter(self._unicom_transmitter)
+            self.signals.show_log_message.emit("ControllerWindow", "INFO",
+                                               f"UNICOM注册成功，{self._unicom_transmitter.output_target}")
             self.voice_client.add_transmitter(self._emer_transmitter)
+            self.signals.show_log_message.emit("ControllerWindow", "INFO",
+                                               f"紧急频率注册成功，{self._emer_transmitter.output_target}")
             self.voice_client.add_transmitter(self._custom_transmitter)
+            self.signals.show_log_message.emit("ControllerWindow", "INFO",
+                                               f"自定义频率注册成功，{self._unicom_transmitter.output_target}")
             self.label_main_freq_v.setText(f"{self.voice_client.client_info.main_frequency / 1000:.3f}")
         elif state == ConnectionState.DISCONNECTED:
             self.clear()

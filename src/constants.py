@@ -30,3 +30,6 @@ default_frame_time: int = 20  # ms
 default_frame_time_s: float = default_frame_time / 1000  # s
 # 音频帧大小
 default_frame_size: int = int(opus_default_sample_rate / (1000 / default_frame_time))
+
+# 会话保持：登录后后台刷新主 token 的间隔（分钟）
+session_refresh_interval_minutes: int = 10
